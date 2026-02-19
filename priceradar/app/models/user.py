@@ -4,6 +4,10 @@ import enum
 from datetime import datetime
 
 from sqlalchemy import BigInteger, DateTime, Enum, Integer, String, func
+
+# SQLite only auto-generates ROWID for exact INTEGER PRIMARY KEY columns.
+# BigInteger renders as BIGINT, which breaks autoincrement in SQLite (tests).
+BigIntPK = BigInteger().with_variant(Integer, "sqlite")
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -46,7 +50,7 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
     telegram_id: Mapped[int] = mapped_column(
         BigInteger, unique=True, index=True, nullable=False
     )

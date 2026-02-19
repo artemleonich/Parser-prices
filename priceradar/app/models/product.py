@@ -16,6 +16,8 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+
+BigIntPK = BigInteger().with_variant(Integer, "sqlite")
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -35,7 +37,7 @@ class TrackedProduct(Base):
         UniqueConstraint("user_id", "marketplace", "external_id", name="uq_user_marketplace_product"),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -79,7 +81,7 @@ class PriceHistory(Base):
 
     __tablename__ = "price_history"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
     product_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("tracked_products.id", ondelete="CASCADE"),
         nullable=False, index=True,

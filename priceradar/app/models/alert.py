@@ -10,9 +10,12 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Integer,
     Numeric,
     func,
 )
+
+BigIntPK = BigInteger().with_variant(Integer, "sqlite")
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -31,7 +34,7 @@ class AlertRule(Base):
 
     __tablename__ = "alert_rules"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -62,7 +65,7 @@ class AlertLog(Base):
 
     __tablename__ = "alert_logs"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
     alert_rule_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("alert_rules.id", ondelete="CASCADE"), nullable=False
     )
