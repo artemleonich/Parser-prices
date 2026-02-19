@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.title }} — PriceRadar{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="/dashboard">&larr; Назад к дашборду</a>
+</div>
+
+<div class="product-header">
+    <div class="product-info">
+        {% if product.image_url %}
+        <img src="{{ product.image_url }}" alt="{{ product.title }}" class="product-image">
+        {% endif %}
+        <div>
+            <h1>{{ product.title }}</h1>
+            <p class="marketplace-label">
+                {% if product.marketplace.value == 'wildberries' %}Wildberries
+                {% elif product.marketplace.value == 'ozon' %}Ozon
+                {% elif product.marketplace.value == 'yandex_market' %}Яндекс Маркет
+                {% endif %}
+                &middot; Артикул: {{ product.external_id }}
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="price-stats">
+    <div class="stat-card">
+        <span class="stat-label">Текущая цена</span>
+        <span class="stat-value">
+            {% if product.current_price %}
+                {{ "{:,.0f}".format(product.current_price) }} &#8381;
+            {% else %}
+                &mdash;
+            {% endif %}
+        </span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Предыдущая цена</span>
+        <span class="stat-value">
+            {% if product.previous_price %}
+                {{ "{:,.0f}".format(product.previous_price) }} &#8381;
+            {% else %}
+                &mdash;
+            {% endif %}
+        </span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Мин. за {{ days }} дней</span>
+        <span class="stat-value">
+            {% if min_price %}
+                {{ "{:,.0f}".format(min_price) }} &#8381;
+            {% else %}
+                &mdash;
+            {% endif %}
+        </span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Тренд (7 дней)</span>
+        <span class="stat-value trend {% if trend and trend < -1 %}trend-down{% elif trend and trend > 1 %}trend-up{% endif %}">
+            {{ trend_arrow }}
+            {% if trend is not none %}
+                {{ "{:+.1f}".format(trend) }}%
+            {% endif %}
+        </span>
+    </div>
+</div>
+
+<div class="chart-controls">
+    <a href="/product/{{ product.id }}?days=7" class="btn-sm {% if days == 7 %}active{% endif %}">7 дней</a>
+    <a href="/product/{{ product.id }}?days=30" class="btn-sm {% if days == 30 %}active{% endif %}">30 дней</a>
+    <a href="/product/{{ product.id }}?days=90" class="btn-sm {% if days == 90 %}active{% endif %}">90 дней</a>
+    <a href="{{ product.url }}" target="_blank" class="btn-sm">Открыть на маркетплейсе</a>
+</div>
+
+<div class="chart-container">
+    <canvas id="priceChart"></canvas>
+</div>
+
+<h2>История цен</h2>
+<table class="products-table">
+    <thead>
+        <tr>
+            <th>Дата</th>
+            <th>Цена</th>
+            <th>Цена до скидки</th>
+            <th>Скидка</th>
+            <th>В наличии</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for h in history[-50:] | reverse %}
+        <tr>
+            <td>{{ h.recorded_at.strftime('%d.%m.%Y %H:%M') }}</td>
+            <td>{{ "{:,.0f}".format(h.price) }} &#8381;</td>
+            <td>{% if h.original_price %}{{ "{:,.0f}".format(h.original_price) }} &#8381;{% else %}&mdash;{% endif %}</td>
+            <td>{% if h.discount_percent %}-{{ h.discount_percent }}%{% else %}&mdash;{% endif %}</td>
+            <td>{% if h.in_stock %}Да{% else %}Нет{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ctx = document.getElementById('priceChart').getContext('2d');
+const labels = {{ chart_labels | tojson }};
+const prices = {{ chart_prices | tojson }};
+const originalPrices = {{ chart_original | tojson }};
+
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: labels,
+        datasets: [
+            {
+                label: 'Цена',
+                data: prices,
+                borderColor: '#2563eb',
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 2,
+            },
+            {
+                label: 'Цена до скидки',
+                data: originalPrices,
+                borderColor: '#94a3b8',
+                borderDash: [5, 5],
+                fill: false,
+                tension: 0.3,
+                pointRadius: 0,
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+            intersect: false,
+            mode: 'index',
+        },
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        if (ctx.parsed.y !== null) {
+                            return ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString('ru-RU') + ' \u20bd';
+                        }
+                        return '';
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                ticks: {
+                    callback: function(value) {
+                        return value.toLocaleString('ru-RU') + ' \u20bd';
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

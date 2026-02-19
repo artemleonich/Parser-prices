@@ -1,0 +1,65 @@
+{% if products %}
+<table class="products-table">
+    <thead>
+        <tr>
+            <th>Товар</th>
+            <th>Маркетплейс</th>
+            <th>Текущая цена</th>
+            <th>Тренд (7д)</th>
+            <th>Обновлено</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in products %}
+        {% set p = item.product %}
+        <tr>
+            <td>
+                <a href="/product/{{ p.id }}">{{ p.title or 'Без названия' }}</a>
+            </td>
+            <td>
+                {% if p.marketplace.value == 'wildberries' %}Wildberries
+                {% elif p.marketplace.value == 'ozon' %}Ozon
+                {% elif p.marketplace.value == 'yandex_market' %}Яндекс Маркет
+                {% endif %}
+            </td>
+            <td class="price">
+                {% if p.current_price %}
+                    {{ "{:,.0f}".format(p.current_price) }} &#8381;
+                {% else %}
+                    &mdash;
+                {% endif %}
+            </td>
+            <td class="trend {% if item.trend and item.trend < -1 %}trend-down{% elif item.trend and item.trend > 1 %}trend-up{% endif %}">
+                {{ item.trend_arrow }}
+                {% if item.trend is not none %}
+                    {{ "{:+.1f}".format(item.trend) }}%
+                {% endif %}
+            </td>
+            <td class="updated">
+                {% if p.price_updated_at %}
+                    {{ p.price_updated_at.strftime('%d.%m %H:%M') }}
+                {% else %}
+                    &mdash;
+                {% endif %}
+            </td>
+            <td>
+                <a href="{{ p.url }}" target="_blank" class="btn-sm">Открыть</a>
+                <button class="btn-sm btn-danger"
+                        hx-delete="/api/products/{{ p.id }}"
+                        hx-target="#products-table"
+                        hx-swap="innerHTML"
+                        hx-confirm="Удалить товар {{ p.title }}?">
+                    Удалить
+                </button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>У вас пока нет отслеживаемых товаров.</p>
+    <p>Вставьте ссылку на товар с Wildberries, Ozon или Яндекс Маркета в поле выше.</p>
+</div>
+{% endif %}

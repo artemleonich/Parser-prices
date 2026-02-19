@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Дашборд — PriceRadar{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Мои товары</h1>
+    <div class="stats">
+        <span class="badge">{{ product_count }}/{{ max_products }} по тарифу {{ plan }}</span>
+    </div>
+</div>
+
+<div class="actions-bar">
+    <form class="add-product-form" hx-post="/api/products" hx-target="#products-table" hx-swap="innerHTML" hx-on::after-request="this.reset()">
+        <input type="text" name="url" placeholder="Вставьте ссылку на товар (WB, Ozon, Яндекс Маркет)" required>
+        <button type="submit">Добавить</button>
+    </form>
+</div>
+
+<div id="products-table" hx-get="/dashboard/products-table" hx-trigger="every 60s" hx-swap="innerHTML">
+    {% include "components/product_card.html" %}
+</div>
+{% endblock %}

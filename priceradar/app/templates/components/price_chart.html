@@ -1,0 +1,36 @@
+{# Reusable price chart component - included via HTMX or template include #}
+<div class="chart-container">
+    <canvas id="priceChart-{{ product_id }}"></canvas>
+</div>
+<script>
+(function() {
+    const ctx = document.getElementById('priceChart-{{ product_id }}').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ chart_labels | tojson }},
+            datasets: [{
+                label: 'Цена',
+                data: {{ chart_prices | tojson }},
+                borderColor: '#2563eb',
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: function(v) { return v.toLocaleString('ru-RU') + ' \u20bd'; }
+                    }
+                }
+            }
+        }
+    });
+})();
+</script>
