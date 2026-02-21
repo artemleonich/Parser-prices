@@ -1,5 +1,3 @@
-"""Celery tasks for product parsing."""
-
 import asyncio
 import random
 from datetime import datetime, timedelta, timezone
@@ -20,10 +18,6 @@ logger = structlog.get_logger()
 
 
 async def _parse_single_product(product_id: int) -> dict:
-    """Parse a single product and update its price.
-
-    Returns a dict with parsing result info.
-    """
     async with async_session_factory() as session:
         product = await session.get(TrackedProduct, product_id)
         if product is None or not product.is_active:
@@ -83,16 +77,13 @@ async def _parse_single_product(product_id: int) -> dict:
 
 @celery_app.task(name="app.tasks.parsing.parse_single_product")
 def parse_single_product(product_id: int) -> dict:
-    """Celery task: parse a single product."""
     return asyncio.run(_parse_single_product(product_id))
 
 
 async def _get_products_to_parse() -> list[dict]:
-    """Get all active products grouped by marketplace with respect to parse intervals."""
     async with async_session_factory() as session:
         now = datetime.now(timezone.utc)
 
-        # Determine parse interval per subscription plan
         intervals = {
             SubscriptionPlan.FREE: timedelta(seconds=settings.PARSE_INTERVAL_FREE),
             SubscriptionPlan.BASIC: timedelta(seconds=settings.PARSE_INTERVAL_BASIC),
@@ -111,7 +102,6 @@ async def _get_products_to_parse() -> list[dict]:
         for product, plan in rows:
             interval = intervals.get(plan, intervals[SubscriptionPlan.FREE])
 
-            # Skip if recently parsed
             if product.price_updated_at and (now - product.price_updated_at) < interval:
                 continue
 
@@ -125,20 +115,16 @@ async def _get_products_to_parse() -> list[dict]:
 
 @celery_app.task(name="app.tasks.parsing.parse_all_products")
 def parse_all_products() -> dict:
-    """Celery task: schedule parsing for all active products."""
     products = asyncio.run(_get_products_to_parse())
 
-    # Group by marketplace for staggered scheduling
     by_marketplace: dict[str, list[int]] = {}
     for p in products:
         by_marketplace.setdefault(p["marketplace"], []).append(p["id"])
 
     total_scheduled = 0
     for marketplace, product_ids in by_marketplace.items():
-        # Shuffle to avoid predictable patterns
         random.shuffle(product_ids)
         for i, pid in enumerate(product_ids):
-            # Stagger requests: 3-5 second delay between each product per marketplace
             delay = i * random.uniform(3, 5)
             parse_single_product.apply_async(
                 args=[pid],
@@ -159,7 +145,6 @@ def parse_all_products() -> dict:
 
 
 async def _cleanup_old_prices() -> int:
-    """Delete price history older than the maximum retention period."""
     async with async_session_factory() as session:
         svc = PriceService(session)
         count = await svc.cleanup_old_prices(days=settings.PRICE_HISTORY_RETENTION_DAYS_PRO)
@@ -169,13 +154,11 @@ async def _cleanup_old_prices() -> int:
 
 @celery_app.task(name="app.tasks.parsing.cleanup_old_prices")
 def cleanup_old_prices() -> dict:
-    """Celery task: clean up old price history records."""
     deleted = asyncio.run(_cleanup_old_prices())
     return {"deleted": deleted}
 
 
 async def _deactivate_broken() -> int:
-    """Deactivate products with too many consecutive parse errors."""
     async with async_session_factory() as session:
         stmt = (
             update(TrackedProduct)
@@ -204,6 +187,5 @@ async def _deactivate_broken() -> int:
 
 @celery_app.task(name="app.tasks.parsing.deactivate_broken")
 def deactivate_broken() -> dict:
-    """Celery task: deactivate products with persistent parse errors."""
     count = asyncio.run(_deactivate_broken())
     return {"deactivated": count}

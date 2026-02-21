@@ -1,9 +1,3 @@
-"""Shared test fixtures for the PriceRadar test suite.
-
-Uses an async in-memory SQLite database so tests run without any
-external services.
-"""
-
 import asyncio
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -21,31 +15,15 @@ from app.models.user import SubscriptionPlan, User
 from app.models.product import Marketplace, TrackedProduct
 
 
-# ---------------------------------------------------------------------------
-# Event loop fixture (session-scoped so the engine can be reused)
-# ---------------------------------------------------------------------------
-
-
 @pytest.fixture(scope="session")
 def event_loop():
-    """Create a single event loop for the entire test session."""
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
 
 
-# ---------------------------------------------------------------------------
-# Async SQLite engine & session
-# ---------------------------------------------------------------------------
-
-
 @pytest_asyncio.fixture()
 async def db_session():
-    """Yield an async SQLAlchemy session backed by an in-memory SQLite DB.
-
-    A fresh database is created for every test so that tests are fully
-    isolated from each other.
-    """
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
         echo=False,
@@ -69,14 +47,8 @@ async def db_session():
     await engine.dispose()
 
 
-# ---------------------------------------------------------------------------
-# Domain-object fixtures
-# ---------------------------------------------------------------------------
-
-
 @pytest_asyncio.fixture()
 async def test_user(db_session: AsyncSession) -> User:
-    """Create and return a persisted test User with the FREE plan."""
     user = User(
         telegram_id=123456,
         first_name="Test",
@@ -92,7 +64,6 @@ async def test_product(
     db_session: AsyncSession,
     test_user: User,
 ) -> TrackedProduct:
-    """Create and return a persisted TrackedProduct on Wildberries."""
     product = TrackedProduct(
         user_id=test_user.id,
         marketplace=Marketplace.WILDBERRIES,

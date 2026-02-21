@@ -1,5 +1,3 @@
-"""REST API endpoints for tracked products."""
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +14,6 @@ async def list_products(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict]:
-    """List all tracked products for the current user."""
     svc = PriceService(session)
     products = await svc.get_user_products(user.id)
     return [
@@ -43,7 +40,6 @@ async def add_product(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Add a new product to track by URL."""
     url = data.get("url", "").strip()
     if not url:
         raise HTTPException(status_code=400, detail="URL is required")
@@ -69,7 +65,6 @@ async def delete_product(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Delete a tracked product."""
     svc = PriceService(session)
     deleted = await svc.delete_product(product_id, user.id)
     if not deleted:
@@ -84,7 +79,6 @@ async def product_history(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict]:
-    """Get price history for a product."""
     svc = PriceService(session)
     product = await svc.get_product_by_id(product_id)
     if product is None or product.user_id != user.id:

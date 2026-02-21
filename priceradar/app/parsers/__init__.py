@@ -1,5 +1,3 @@
-"""Marketplace parsers."""
-
 from app.parsers.base import BaseParser, ParsedProduct
 from app.parsers.ozon import OzonParser
 from app.parsers.wildberries import WildberriesParser

@@ -1,5 +1,3 @@
-"""Alembic environment configuration."""
-
 import os
 import sys
 from logging.config import fileConfig
@@ -7,7 +5,6 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-# Add project root to path so we can import app modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import Base  # noqa: E402
@@ -15,7 +12,6 @@ from app.models import *  # noqa: E402, F401, F403
 
 config = context.config
 
-# Override sqlalchemy.url from environment if available
 database_url = os.getenv("DATABASE_URL_SYNC")
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
@@ -27,7 +23,6 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -40,7 +35,6 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

@@ -1,5 +1,3 @@
-"""Main API router combining all sub-routers."""
-
 from fastapi import APIRouter
 
 from app.api.auth import router as auth_router

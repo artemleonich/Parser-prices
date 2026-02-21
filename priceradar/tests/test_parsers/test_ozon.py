@@ -1,5 +1,3 @@
-"""Unit tests for the Ozon parser."""
-
 import json
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
@@ -11,11 +9,6 @@ from app.parsers.ozon import OzonParser
 from app.parsers.utils import BlockedError, NotFoundError, ParsingError
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
 def _make_ozon_api_response(
     title: str = "Ozon Test Product",
     price: str = "4 990 ₽",
@@ -23,7 +16,6 @@ def _make_ozon_api_response(
     is_out_of_stock: bool = False,
     image_url: str = "https://cdn.ozon.ru/image.jpg",
 ) -> dict:
-    """Build a mock Ozon Composer API (widgetStates) JSON payload."""
     price_widget = json.dumps({
         "webPrice": {
             "price": price,
@@ -56,7 +48,6 @@ def _make_ozon_html_with_json_ld(
     availability: str = "https://schema.org/InStock",
     image_url: str = "https://cdn.ozon.ru/html_image.jpg",
 ) -> str:
-    """Build a mock Ozon HTML page containing a JSON-LD Product block."""
     json_ld = json.dumps({
         "@context": "https://schema.org",
         "@type": "Product",
@@ -86,7 +77,6 @@ def _build_httpx_response(
     status_code: int = 200,
     url: str = "https://api.ozon.ru/composer-api.bx/page/json/v2",
 ) -> httpx.Response:
-    """Create a minimal httpx.Response."""
     kwargs: dict = {
         "status_code": status_code,
         "request": httpx.Request("GET", url),
@@ -99,7 +89,6 @@ def _build_httpx_response(
 
 
 def _mock_client(response: httpx.Response) -> AsyncMock:
-    """Return an AsyncMock that behaves like an httpx.AsyncClient context manager."""
     client = AsyncMock()
     client.get = AsyncMock(return_value=response)
     client.__aenter__ = AsyncMock(return_value=client)
@@ -107,13 +96,7 @@ def _mock_client(response: httpx.Response) -> AsyncMock:
     return client
 
 
-# ---------------------------------------------------------------------------
-# extract_product_id
-# ---------------------------------------------------------------------------
-
-
 class TestExtractProductId:
-    """Tests for OzonParser.extract_product_id."""
 
     def setup_method(self) -> None:
         self.parser = OzonParser()
@@ -143,13 +126,7 @@ class TestExtractProductId:
             self.parser.extract_product_id("https://www.ozon.ru/category/electronics/")
 
 
-# ---------------------------------------------------------------------------
-# build_url
-# ---------------------------------------------------------------------------
-
-
 class TestBuildUrl:
-    """Tests for OzonParser.build_url."""
 
     def setup_method(self) -> None:
         self.parser = OzonParser()
@@ -163,20 +140,13 @@ class TestBuildUrl:
         assert "999888777" in url
 
 
-# ---------------------------------------------------------------------------
-# parse_product -- mobile API strategy
-# ---------------------------------------------------------------------------
-
-
 class TestParseProductViaApi:
-    """Tests for OzonParser.parse_product using the mobile Composer API."""
 
     def setup_method(self) -> None:
         self.parser = OzonParser()
 
     @pytest.mark.asyncio
     async def test_parse_product_via_api_success(self) -> None:
-        """Successful API parse returns correct ParsedProduct."""
         api_json = _make_ozon_api_response()
         mock_resp = _build_httpx_response(json_body=api_json)
         client = _mock_client(mock_resp)
@@ -195,7 +165,6 @@ class TestParseProductViaApi:
 
     @pytest.mark.asyncio
     async def test_parse_product_via_api_out_of_stock(self) -> None:
-        """Out-of-stock flag is correctly detected."""
         api_json = _make_ozon_api_response(is_out_of_stock=True)
         mock_resp = _build_httpx_response(json_body=api_json)
         client = _mock_client(mock_resp)
@@ -209,7 +178,6 @@ class TestParseProductViaApi:
 
     @pytest.mark.asyncio
     async def test_parse_product_via_api_bare_id(self) -> None:
-        """Bare numeric ID is accepted without URL parsing."""
         api_json = _make_ozon_api_response()
         mock_resp = _build_httpx_response(json_body=api_json)
         client = _mock_client(mock_resp)
@@ -221,7 +189,6 @@ class TestParseProductViaApi:
 
     @pytest.mark.asyncio
     async def test_parse_product_blocked_raises(self) -> None:
-        """HTTP 403 from the API raises BlockedError."""
         mock_resp = _build_httpx_response(json_body={}, status_code=403)
         client = _mock_client(mock_resp)
 
@@ -231,7 +198,6 @@ class TestParseProductViaApi:
 
     @pytest.mark.asyncio
     async def test_parse_product_not_found_raises(self) -> None:
-        """HTTP 404 from the API raises NotFoundError."""
         mock_resp = _build_httpx_response(json_body={}, status_code=404)
         client = _mock_client(mock_resp)
 
@@ -240,24 +206,14 @@ class TestParseProductViaApi:
                 await self.parser.parse_product("123456789")
 
 
-# ---------------------------------------------------------------------------
-# parse_product -- HTML + JSON-LD fallback strategy
-# ---------------------------------------------------------------------------
-
-
 class TestParseProductViaHtmlFallback:
-    """Tests for OzonParser fallback to HTML parsing with JSON-LD."""
 
     def setup_method(self) -> None:
         self.parser = OzonParser()
 
     @pytest.mark.asyncio
     async def test_fallback_to_html_on_api_failure(self) -> None:
-        """When the API strategy fails, the parser falls back to HTML + JSON-LD."""
-        # First call (API) raises a generic error to trigger fallback.
         api_resp = _build_httpx_response(json_body={"widgetStates": {}}, status_code=200)
-
-        # Second call (HTML) returns a valid page with JSON-LD.
         html_body = _make_ozon_html_with_json_ld()
         html_resp = _build_httpx_response(
             text_body=html_body,
@@ -271,11 +227,8 @@ class TestParseProductViaHtmlFallback:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                # API call -- return a response that will cause ParsingError
-                # (no price in widgetStates)
                 return _mock_client(api_resp)
             else:
-                # HTML call
                 return _mock_client(html_resp)
 
         with patch("app.parsers.ozon.create_http_client", side_effect=_fake_client):
@@ -292,7 +245,6 @@ class TestParseProductViaHtmlFallback:
 
     @pytest.mark.asyncio
     async def test_html_json_ld_out_of_stock(self) -> None:
-        """JSON-LD availability=OutOfStock is detected."""
         html_body = _make_ozon_html_with_json_ld(
             availability="https://schema.org/OutOfStock"
         )
@@ -302,7 +254,6 @@ class TestParseProductViaHtmlFallback:
             url="https://www.ozon.ru/product/123456789/",
         )
 
-        # Force fallback by making API response lack price data.
         api_resp = _build_httpx_response(
             json_body={"widgetStates": {}}, status_code=200,
         )
@@ -326,7 +277,6 @@ class TestParseProductViaHtmlFallback:
 
     @pytest.mark.asyncio
     async def test_html_no_json_ld_raises(self) -> None:
-        """HTML page without JSON-LD blocks raises ParsingError."""
         html_body = "<html><head></head><body>No JSON-LD here</body></html>"
         html_resp = _build_httpx_response(
             text_body=html_body,
@@ -334,7 +284,6 @@ class TestParseProductViaHtmlFallback:
             url="https://www.ozon.ru/product/123456789/",
         )
 
-        # Force fallback.
         api_resp = _build_httpx_response(
             json_body={"widgetStates": {}}, status_code=200,
         )
@@ -356,13 +305,7 @@ class TestParseProductViaHtmlFallback:
                 )
 
 
-# ---------------------------------------------------------------------------
-# Discount calculation
-# ---------------------------------------------------------------------------
-
-
 class TestDiscountCalculation:
-    """Verify discount percentage is computed from prices."""
 
     def setup_method(self) -> None:
         self.parser = OzonParser()

@@ -1,5 +1,3 @@
-"""Inline keyboard builders for the PriceRadar Telegram bot."""
-
 from __future__ import annotations
 
 import math
@@ -11,28 +9,17 @@ if TYPE_CHECKING:
     from app.models.product import TrackedProduct
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 def _build_markup(buttons: list[list[InlineKeyboardButton]]) -> InlineKeyboardMarkup:
-    """Shortcut to create an InlineKeyboardMarkup from a 2-D button list."""
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def _fmt_price(value) -> str:
-    """Format a numeric price with thousands separator and ruble sign."""
     if value is None:
         return "N/A"
     return f"{value:,.0f} \u20bd".replace(",", "\u202f")
 
 
-# ---------------------------------------------------------------------------
-# Main menu
-# ---------------------------------------------------------------------------
-
 def main_menu_keyboard() -> InlineKeyboardMarkup:
-    """Main menu with core bot actions."""
     return _build_markup(
         [
             [InlineKeyboardButton(text="\U0001f50d \u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0442\u043e\u0432\u0430\u0440", callback_data="add_product")],
@@ -44,12 +31,7 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-# ---------------------------------------------------------------------------
-# Product actions
-# ---------------------------------------------------------------------------
-
 def product_actions_keyboard(product_id: int) -> InlineKeyboardMarkup:
-    """Actions available for a single tracked product."""
     return _build_markup(
         [
             [
@@ -86,12 +68,7 @@ def product_actions_keyboard(product_id: int) -> InlineKeyboardMarkup:
     )
 
 
-# ---------------------------------------------------------------------------
-# Alert type selection
-# ---------------------------------------------------------------------------
-
 def alert_type_keyboard(product_id: int) -> InlineKeyboardMarkup:
-    """Choose alert type after adding / for an existing product."""
     return _build_markup(
         [
             [
@@ -122,12 +99,7 @@ def alert_type_keyboard(product_id: int) -> InlineKeyboardMarkup:
     )
 
 
-# ---------------------------------------------------------------------------
-# Subscription plan selection
-# ---------------------------------------------------------------------------
-
 def subscription_keyboard() -> InlineKeyboardMarkup:
-    """Plan selection keyboard for subscription upgrade."""
     return _build_markup(
         [
             [
@@ -152,10 +124,6 @@ def subscription_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-# ---------------------------------------------------------------------------
-# Paginated product list
-# ---------------------------------------------------------------------------
-
 PRODUCTS_PER_PAGE: int = 5
 
 
@@ -164,10 +132,6 @@ def products_pagination_keyboard(
     page: int,
     total_pages: int,
 ) -> InlineKeyboardMarkup:
-    """Build a paginated list of products with navigation buttons.
-
-    Each product is shown as a single button with its title and current price.
-    """
     buttons: list[list[InlineKeyboardButton]] = []
 
     start = page * PRODUCTS_PER_PAGE
@@ -186,7 +150,6 @@ def products_pagination_keyboard(
             ]
         )
 
-    # Navigation row
     nav_row: list[InlineKeyboardButton] = []
     if page > 0:
         nav_row.append(
@@ -199,7 +162,6 @@ def products_pagination_keyboard(
     if nav_row:
         buttons.append(nav_row)
 
-    # Footer
     buttons.append(
         [InlineKeyboardButton(text="\U0001f3e0 \u0413\u043b\u0430\u0432\u043d\u043e\u0435 \u043c\u0435\u043d\u044e", callback_data="main_menu")]
     )
@@ -207,12 +169,7 @@ def products_pagination_keyboard(
     return _build_markup(buttons)
 
 
-# ---------------------------------------------------------------------------
-# Confirm deletion
-# ---------------------------------------------------------------------------
-
 def confirm_delete_keyboard(product_id: int) -> InlineKeyboardMarkup:
-    """Confirm / cancel product deletion."""
     return _build_markup(
         [
             [
@@ -229,12 +186,7 @@ def confirm_delete_keyboard(product_id: int) -> InlineKeyboardMarkup:
     )
 
 
-# ---------------------------------------------------------------------------
-# Back to main menu (utility)
-# ---------------------------------------------------------------------------
-
 def back_to_menu_keyboard() -> InlineKeyboardMarkup:
-    """Single-button keyboard that returns to the main menu."""
     return _build_markup(
         [
             [InlineKeyboardButton(text="\U0001f3e0 \u0413\u043b\u0430\u0432\u043d\u043e\u0435 \u043c\u0435\u043d\u044e", callback_data="main_menu")],

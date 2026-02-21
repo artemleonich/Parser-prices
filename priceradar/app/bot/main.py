@@ -1,9 +1,3 @@
-"""PriceRadar Telegram bot entry point.
-
-Initialises the aiogram 3.x Dispatcher, registers all routers and
-middleware, then starts long-polling.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -25,7 +19,6 @@ logger = structlog.get_logger()
 
 
 async def main() -> None:
-    """Create bot, register components, and start polling."""
     logger.info("bot_starting", bot_username=settings.TELEGRAM_BOT_USERNAME)
 
     bot = Bot(
@@ -35,20 +28,17 @@ async def main() -> None:
 
     dp = Dispatcher(storage=MemoryStorage())
 
-    # ---- Middleware (outer -> inner execution order) ----
-    # ThrottleMiddleware runs first to drop spam before any DB access.
+    # ThrottleMiddleware runs first to drop spam before any DB access
     dp.message.middleware(ThrottleMiddleware())
     dp.callback_query.middleware(ThrottleMiddleware())
     dp.message.middleware(UserMiddleware())
     dp.callback_query.middleware(UserMiddleware())
 
-    # ---- Routers ----
     dp.include_router(start_router)
     dp.include_router(products_router)
     dp.include_router(alerts_router)
     dp.include_router(subscription_router)
 
-    # ---- Start polling ----
     try:
         logger.info("bot_polling_started")
         await dp.start_polling(bot)

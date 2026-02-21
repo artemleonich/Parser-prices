@@ -1,8 +1,8 @@
-"""Initial schema.
+"""initial schema
 
 Revision ID: 001
 Revises: None
-Create Date: 2026-02-19
+Create Date: 2025-02-19
 """
 from typing import Sequence, Union
 
@@ -16,7 +16,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Users
     op.create_table(
         "users",
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
@@ -37,7 +36,6 @@ def upgrade() -> None:
     )
     op.create_index("ix_users_telegram_id", "users", ["telegram_id"], unique=True)
 
-    # Tracked products
     op.create_table(
         "tracked_products",
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
@@ -71,7 +69,6 @@ def upgrade() -> None:
     )
     op.create_index("ix_tracked_products_user_id", "tracked_products", ["user_id"])
 
-    # Price history
     op.create_table(
         "price_history",
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
@@ -91,7 +88,6 @@ def upgrade() -> None:
     op.create_index("ix_price_history_product_id", "price_history", ["product_id"])
     op.create_index("ix_price_history_recorded_at", "price_history", ["recorded_at"])
 
-    # Alert rules
     op.create_table(
         "alert_rules",
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
@@ -122,7 +118,6 @@ def upgrade() -> None:
     )
     op.create_index("ix_alert_rules_user_id", "alert_rules", ["user_id"])
 
-    # Alert logs
     op.create_table(
         "alert_logs",
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),

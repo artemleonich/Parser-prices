@@ -1,5 +1,3 @@
-"""FastAPI application entry point."""
-
 import structlog
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -41,29 +39,23 @@ app = FastAPI(
     redoc_url=None,
 )
 
-# Static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-# Templates
 templates = Jinja2Templates(directory="app/templates")
 
-# Include routers
 app.include_router(api_router)
 
 
 @app.get("/health")
 async def health_check() -> dict:
-    """Health check endpoint."""
     return {"status": "ok", "service": "priceradar"}
 
 
 @app.on_event("startup")
 async def startup_event() -> None:
-    """Application startup tasks."""
     logger.info("priceradar_started", debug=settings.DEBUG)
 
 
 @app.on_event("shutdown")
 async def shutdown_event() -> None:
-    """Application shutdown tasks."""
     logger.info("priceradar_stopped")

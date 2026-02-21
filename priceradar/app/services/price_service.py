@@ -1,5 +1,3 @@
-"""Business logic for price tracking and analytics."""
-
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -16,15 +14,12 @@ logger = structlog.get_logger()
 
 
 class PriceService:
-    """Service for managing tracked products and price history."""
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
     async def get_user_products(
         self, user_id: int, active_only: bool = True
     ) -> list[TrackedProduct]:
-        """Get all tracked products for a user."""
         stmt = select(TrackedProduct).where(TrackedProduct.user_id == user_id)
         if active_only:
             stmt = stmt.where(TrackedProduct.is_active.is_(True))
@@ -33,11 +28,9 @@ class PriceService:
         return list(result.scalars().all())
 
     async def get_product_by_id(self, product_id: int) -> TrackedProduct | None:
-        """Get a single tracked product by ID."""
         return await self.session.get(TrackedProduct, product_id)
 
     async def get_user_product_count(self, user_id: int) -> int:
-        """Count active tracked products for a user."""
         stmt = (
             select(func.count())
             .select_from(TrackedProduct)
@@ -52,7 +45,6 @@ class PriceService:
         return result.scalar_one()
 
     async def can_add_product(self, user: User) -> bool:
-        """Check if user can add another product based on plan limits."""
         current_count = await self.get_user_product_count(user.id)
         limits = PLAN_LIMITS[user.subscription_plan]
         return current_count < limits["max_products"]
@@ -60,11 +52,6 @@ class PriceService:
     async def add_product(
         self, user: User, url: str
     ) -> TrackedProduct:
-        """Add a new product to track.
-
-        Parses the URL to determine marketplace and fetch initial data.
-        Raises ValueError if user has reached their product limit.
-        """
         if not await self.can_add_product(user):
             limits = PLAN_LIMITS[user.subscription_plan]
             raise ValueError(
@@ -72,7 +59,6 @@ class PriceService:
                 f"for {user.subscription_plan.value} plan)"
             )
 
-        # Detect marketplace from URL
         from app.parsers.base import BaseParser
 
         marketplace = BaseParser.detect_marketplace(url)
@@ -86,7 +72,6 @@ class PriceService:
         parser = parser_cls()
         product_id = parser.extract_product_id(url)
 
-        # Check for duplicate
         existing = await self.session.execute(
             select(TrackedProduct).where(
                 and_(
@@ -99,7 +84,6 @@ class PriceService:
         if existing.scalar_one_or_none():
             raise ValueError("Product is already being tracked")
 
-        # Parse current product data
         parsed = await parser.parse_product(url)
 
         product = TrackedProduct(
@@ -115,7 +99,6 @@ class PriceService:
         self.session.add(product)
         await self.session.flush()
 
-        # Record initial price
         history = PriceHistory(
             product_id=product.id,
             price=parsed.price,
@@ -135,7 +118,6 @@ class PriceService:
         return product
 
     async def remove_product(self, product_id: int, user_id: int) -> bool:
-        """Deactivate a tracked product."""
         product = await self.get_product_by_id(product_id)
         if product is None or product.user_id != user_id:
             return False
@@ -143,7 +125,6 @@ class PriceService:
         return True
 
     async def delete_product(self, product_id: int, user_id: int) -> bool:
-        """Permanently delete a tracked product."""
         product = await self.get_product_by_id(product_id)
         if product is None or product.user_id != user_id:
             return False
@@ -153,10 +134,7 @@ class PriceService:
     async def update_product_price(
         self, product: TrackedProduct, parsed: ParsedProduct
     ) -> bool:
-        """Update product price and record history.
-
-        Returns True if price actually changed.
-        """
+        """Returns True if price actually changed."""
         price_changed = product.current_price != parsed.price
 
         if price_changed:
@@ -188,13 +166,11 @@ class PriceService:
         return price_changed
 
     async def increment_parse_error(self, product: TrackedProduct) -> None:
-        """Increment parse error count for a product."""
         product.parse_errors_count += 1
 
     async def get_price_history(
         self, product_id: int, days: int = 30
     ) -> list[PriceHistory]:
-        """Get price history for a product within the specified number of days."""
         since = datetime.now(timezone.utc) - timedelta(days=days)
         stmt = (
             select(PriceHistory)
@@ -212,7 +188,6 @@ class PriceService:
     async def get_min_price(
         self, product_id: int, days: int = 30
     ) -> Decimal | None:
-        """Get minimum price for a product in the last N days."""
         since = datetime.now(timezone.utc) - timedelta(days=days)
         stmt = (
             select(func.min(PriceHistory.price))
@@ -229,10 +204,7 @@ class PriceService:
     async def get_price_trend(
         self, product_id: int, days: int = 7
     ) -> float | None:
-        """Calculate price trend percentage over the last N days.
-
-        Returns positive number for price increase, negative for decrease, None if no data.
-        """
+        """Positive = price went up, negative = went down, None = not enough data."""
         history = await self.get_price_history(product_id, days)
         if len(history) < 2:
             return None
@@ -246,10 +218,7 @@ class PriceService:
         return float((last_price - first_price) / first_price * 100)
 
     async def cleanup_old_prices(self, days: int = 90) -> int:
-        """Delete price history older than the specified number of days.
-
-        Returns the number of deleted records.
-        """
+        """Returns the number of deleted records."""
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         stmt = (
             select(PriceHistory)

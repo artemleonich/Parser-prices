@@ -1,5 +1,3 @@
-"""Alert rule and alert log models."""
-
 import enum
 from datetime import datetime
 from decimal import Decimal
@@ -30,8 +28,6 @@ class RuleType(str, enum.Enum):
 
 
 class AlertRule(Base):
-    """User-defined alert rule for price changes."""
-
     __tablename__ = "alert_rules"
 
     id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
@@ -50,7 +46,6 @@ class AlertRule(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    # Relationships
     user: Mapped["User"] = relationship(back_populates="alert_rules")  # noqa: F821
     product: Mapped["TrackedProduct | None"] = relationship(  # noqa: F821
         back_populates="alert_rules"
@@ -61,8 +56,6 @@ class AlertRule(Base):
 
 
 class AlertLog(Base):
-    """Log of triggered alerts."""
-
     __tablename__ = "alert_logs"
 
     id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
@@ -82,6 +75,5 @@ class AlertLog(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    # Relationships
     alert_rule: Mapped["AlertRule"] = relationship(back_populates="logs")
     product: Mapped["TrackedProduct"] = relationship()  # noqa: F821

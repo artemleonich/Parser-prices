@@ -1,5 +1,3 @@
-"""Handlers for subscription management and Telegram Payments (YooKassa)."""
-
 from __future__ import annotations
 
 import structlog
@@ -21,11 +19,6 @@ logger = structlog.get_logger()
 
 router = Router(name="subscription")
 
-
-# ---------------------------------------------------------------------------
-# Plan description helpers
-# ---------------------------------------------------------------------------
-
 PLAN_NAMES: dict[SubscriptionPlan, str] = {
     SubscriptionPlan.FREE: "Free",
     SubscriptionPlan.BASIC: "Basic",
@@ -34,31 +27,26 @@ PLAN_NAMES: dict[SubscriptionPlan, str] = {
 
 PLAN_DESCRIPTIONS: dict[SubscriptionPlan, str] = {
     SubscriptionPlan.BASIC: (
-        "\u2b50 <b>Basic</b> \u2014 990 \u20bd/\u043c\u0435\u0441\n"
-        "\u2022 \u0414\u043e 50 \u0442\u043e\u0432\u0430\u0440\u043e\u0432\n"
-        "\u2022 20 \u0430\u043b\u0435\u0440\u0442\u043e\u0432\n"
-        "\u2022 3 \u043c\u0430\u0440\u043a\u0435\u0442\u043f\u043b\u0435\u0439\u0441\u0430\n"
-        "\u2022 \u0418\u0441\u0442\u043e\u0440\u0438\u044f 30 \u0434\u043d\u0435\u0439\n"
-        "\u2022 \u042d\u043a\u0441\u043f\u043e\u0440\u0442 CSV"
+        "\u2b50 <b>Basic</b> \u2014 990 \u20bd/мес\n"
+        "\u2022 До 50 товаров\n"
+        "\u2022 20 алертов\n"
+        "\u2022 3 маркетплейса\n"
+        "\u2022 История 30 дней\n"
+        "\u2022 Экспорт CSV"
     ),
     SubscriptionPlan.PRO: (
-        "\U0001f451 <b>Pro</b> \u2014 2 490 \u20bd/\u043c\u0435\u0441\n"
-        "\u2022 \u0414\u043e 200 \u0442\u043e\u0432\u0430\u0440\u043e\u0432\n"
-        "\u2022 \u0411\u0435\u0437\u043b\u0438\u043c\u0438\u0442 \u0430\u043b\u0435\u0440\u0442\u043e\u0432\n"
-        "\u2022 3 \u043c\u0430\u0440\u043a\u0435\u0442\u043f\u043b\u0435\u0439\u0441\u0430\n"
-        "\u2022 \u0418\u0441\u0442\u043e\u0440\u0438\u044f 90 \u0434\u043d\u0435\u0439\n"
-        "\u2022 \u042d\u043a\u0441\u043f\u043e\u0440\u0442 CSV"
+        "\U0001f451 <b>Pro</b> \u2014 2 490 \u20bd/мес\n"
+        "\u2022 До 200 товаров\n"
+        "\u2022 Безлимит алертов\n"
+        "\u2022 3 маркетплейса\n"
+        "\u2022 История 90 дней\n"
+        "\u2022 Экспорт CSV"
     ),
 }
 
 
-# ---------------------------------------------------------------------------
-# Show current subscription
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data == "subscription")
 async def cb_subscription(callback: CallbackQuery) -> None:
-    """Show current subscription status and upgrade options."""
     if callback.from_user is None:
         return
 
@@ -73,7 +61,7 @@ async def cb_subscription(callback: CallbackQuery) -> None:
 
     text = (
         f"{info_text}\n\n"
-        "\u2b06\ufe0f \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0442\u0430\u0440\u0438\u0444 \u0434\u043b\u044f \u043e\u043f\u043b\u0430\u0442\u044b:"
+        "\u2b06\ufe0f Выберите тариф для оплаты:"
     )
 
     await callback.message.edit_text(
@@ -84,13 +72,8 @@ async def cb_subscription(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-# ---------------------------------------------------------------------------
-# Plan selection -> send invoice
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data.startswith("subscribe:"))
 async def cb_subscribe(callback: CallbackQuery) -> None:
-    """Send a Telegram payment invoice for the selected plan."""
     if callback.from_user is None:
         return
 
@@ -99,14 +82,14 @@ async def cb_subscribe(callback: CallbackQuery) -> None:
         plan = SubscriptionPlan(plan_key)
     except ValueError:
         await callback.answer(
-            "\u274c \u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u044b\u0439 \u0442\u0430\u0440\u0438\u0444",
+            "\u274c Неизвестный тариф",
             show_alert=True,
         )
         return
 
     if plan not in PLAN_PRICES:
         await callback.answer(
-            "\u274c \u042d\u0442\u043e\u0442 \u0442\u0430\u0440\u0438\u0444 \u043d\u0435\u043b\u044c\u0437\u044f \u043e\u043f\u043b\u0430\u0442\u0438\u0442\u044c",
+            "\u274c Этот тариф нельзя оплатить",
             show_alert=True,
         )
         return
@@ -115,10 +98,10 @@ async def cb_subscribe(callback: CallbackQuery) -> None:
     plan_name = PLAN_NAMES[plan]
     description = PLAN_DESCRIPTIONS.get(plan, "")
 
-    # Telegram Payments use kopecks (1 ruble = 100 kopecks)
+    # в копейках для Telegram Payments
     prices = [
         LabeledPrice(
-            label=f"PriceRadar {plan_name} (30 \u0434\u043d\u0435\u0439)",
+            label=f"PriceRadar {plan_name} (30 дней)",
             amount=price_rub * 100,
         ),
     ]
@@ -128,8 +111,8 @@ async def cb_subscribe(callback: CallbackQuery) -> None:
     await callback.message.answer_invoice(
         title=f"PriceRadar {plan_name}",
         description=(
-            f"\u041f\u043e\u0434\u043f\u0438\u0441\u043a\u0430 {plan_name} \u043d\u0430 30 \u0434\u043d\u0435\u0439.\n"
-            f"\u0421\u0442\u043e\u0438\u043c\u043e\u0441\u0442\u044c: {price_rub} \u20bd"
+            f"Подписка {plan_name} на 30 дней.\n"
+            f"Стоимость: {price_rub} \u20bd"
         ),
         payload=f"subscription:{plan.value}",
         provider_token=provider_token,
@@ -153,22 +136,13 @@ async def cb_subscribe(callback: CallbackQuery) -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# Pre-checkout query
-# ---------------------------------------------------------------------------
-
 @router.pre_checkout_query()
 async def on_pre_checkout(pre_checkout: PreCheckoutQuery) -> None:
-    """Validate the payment before Telegram processes it.
-
-    We always approve here; real validation (stock, plan availability)
-    can be added as needed.
-    """
     payload = pre_checkout.invoice_payload
     if not payload.startswith("subscription:"):
         await pre_checkout.answer(
             ok=False,
-            error_message="\u274c \u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u044b\u0439 \u0442\u0438\u043f \u043f\u043b\u0430\u0442\u0435\u0436\u0430.",
+            error_message="\u274c Неизвестный тип платежа.",
         )
         return
 
@@ -178,7 +152,7 @@ async def on_pre_checkout(pre_checkout: PreCheckoutQuery) -> None:
     except ValueError:
         await pre_checkout.answer(
             ok=False,
-            error_message="\u274c \u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u044b\u0439 \u0442\u0430\u0440\u0438\u0444.",
+            error_message="\u274c Неизвестный тариф.",
         )
         return
 
@@ -191,13 +165,8 @@ async def on_pre_checkout(pre_checkout: PreCheckoutQuery) -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# Successful payment
-# ---------------------------------------------------------------------------
-
 @router.message(F.successful_payment)
 async def on_successful_payment(message: Message) -> None:
-    """Handle a successful Telegram payment and activate the subscription."""
     if message.from_user is None or message.successful_payment is None:
         return
 
@@ -237,9 +206,9 @@ async def on_successful_payment(message: Message) -> None:
     )
 
     await message.answer(
-        f"\u2705 \u041e\u043f\u043b\u0430\u0442\u0430 \u043f\u0440\u043e\u0448\u043b\u0430 \u0443\u0441\u043f\u0435\u0448\u043d\u043e!\n\n"
-        f"\U0001f451 \u0422\u0430\u0440\u0438\u0444 <b>{plan_name}</b> \u0430\u043a\u0442\u0438\u0432\u0438\u0440\u043e\u0432\u0430\u043d \u043d\u0430 30 \u0434\u043d\u0435\u0439.\n\n"
-        f"\u0421\u043f\u0430\u0441\u0438\u0431\u043e \u0437\u0430 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0443!",
+        f"\u2705 Оплата прошла успешно!\n\n"
+        f"\U0001f451 Тариф <b>{plan_name}</b> активирован на 30 дней.\n\n"
+        f"Спасибо за поддержку!",
         reply_markup=main_menu_keyboard(),
         parse_mode="HTML",
     )

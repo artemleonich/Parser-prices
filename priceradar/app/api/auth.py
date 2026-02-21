@@ -1,5 +1,3 @@
-"""Telegram Login Widget authentication."""
-
 import hashlib
 import hmac
 from datetime import datetime, timezone
@@ -18,15 +16,11 @@ router = APIRouter()
 
 
 def verify_telegram_auth(data: dict) -> bool:
-    """Verify data received from Telegram Login Widget.
-
-    Uses HMAC-SHA256 with bot token hash as the secret key.
-    """
+    """Uses HMAC-SHA256 with bot token hash as the secret key."""
     check_hash = data.pop("hash", None)
     if not check_hash:
         return False
 
-    # Sort and concatenate data
     data_check_string = "\n".join(
         f"{k}={v}" for k, v in sorted(data.items()) if v is not None
     )
@@ -54,7 +48,6 @@ async def telegram_auth(
     response: Response,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Handle Telegram Login Widget callback."""
     params = dict(request.query_params)
 
     if not verify_telegram_auth(params.copy()):
@@ -84,7 +77,6 @@ async def get_current_user(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ) -> "User":  # noqa: F821
-    """Dependency to get the current authenticated user from cookie."""
     user_id = request.cookies.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")

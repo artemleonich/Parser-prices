@@ -17,6 +17,7 @@ Python 3.12, FastAPI, SQLAlchemy 2.0, PostgreSQL, Redis, Celery, aiogram 3, Jinj
 ## Запуск
 
 ```bash
+cd priceradar
 cp .env.example .env
 # заполнить .env (токен бота, БД, etc.)
 
@@ -30,6 +31,7 @@ docker compose exec app alembic upgrade head
 ## Без Docker
 
 ```bash
+cd priceradar
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 alembic upgrade head
@@ -43,6 +45,7 @@ python -m app.bot.main
 ## Тесты
 
 ```bash
+cd priceradar
 pytest tests/ -v
 ```
 

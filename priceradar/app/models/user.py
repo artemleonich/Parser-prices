@@ -1,5 +1,3 @@
-"""User model."""
-
 import enum
 from datetime import datetime
 
@@ -19,7 +17,6 @@ class SubscriptionPlan(str, enum.Enum):
     PRO = "pro"
 
 
-# Plan limits mapping
 PLAN_LIMITS = {
     SubscriptionPlan.FREE: {
         "max_products": 5,
@@ -46,8 +43,6 @@ PLAN_LIMITS = {
 
 
 class User(Base):
-    """Telegram user with subscription info."""
-
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
@@ -70,7 +65,6 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    # Relationships
     tracked_products: Mapped[list["TrackedProduct"]] = relationship(  # noqa: F821
         back_populates="user", cascade="all, delete-orphan"
     )
@@ -80,12 +74,10 @@ class User(Base):
 
     @property
     def plan_limits(self) -> dict:
-        """Return limits for the current subscription plan."""
         return PLAN_LIMITS[self.subscription_plan]
 
     @property
     def is_subscription_active(self) -> bool:
-        """Check if paid subscription is still active."""
         if self.subscription_plan == SubscriptionPlan.FREE:
             return True
         if self.subscription_expires_at is None:

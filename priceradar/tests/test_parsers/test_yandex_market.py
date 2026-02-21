@@ -1,5 +1,3 @@
-"""Unit tests for the Yandex Market parser."""
-
 import json
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
@@ -11,11 +9,6 @@ from app.parsers.yandex_market import YandexMarketParser
 from app.parsers.utils import BlockedError, NotFoundError, ParsingError
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
 def _make_yandex_html_with_json_ld(
     title: str = "Yandex Test Product",
     price: str = "15990",
@@ -24,7 +17,6 @@ def _make_yandex_html_with_json_ld(
     image_url: str = "https://avatars.mds.yandex.net/product.jpg",
     currency: str = "RUB",
 ) -> str:
-    """Build a mock Yandex Market HTML page with a JSON-LD Product block."""
     offers: dict = {
         "@type": "Offer",
         "price": price,
@@ -56,7 +48,6 @@ def _make_yandex_html_with_list_json_ld(
     title: str = "Yandex List Product",
     price: str = "9990",
 ) -> str:
-    """Build HTML where JSON-LD is a list (array) of objects."""
     json_ld = json.dumps([
         {
             "@context": "https://schema.org",
@@ -92,7 +83,6 @@ def _build_httpx_response(
     status_code: int = 200,
     url: str = "https://market.yandex.ru/product/123456",
 ) -> httpx.Response:
-    """Create a minimal httpx.Response with HTML body."""
     return httpx.Response(
         status_code=status_code,
         text=text_body,
@@ -101,7 +91,6 @@ def _build_httpx_response(
 
 
 def _mock_client(response: httpx.Response) -> AsyncMock:
-    """Return an AsyncMock that behaves like an httpx.AsyncClient context manager."""
     client = AsyncMock()
     client.get = AsyncMock(return_value=response)
     client.__aenter__ = AsyncMock(return_value=client)
@@ -109,13 +98,7 @@ def _mock_client(response: httpx.Response) -> AsyncMock:
     return client
 
 
-# ---------------------------------------------------------------------------
-# extract_product_id
-# ---------------------------------------------------------------------------
-
-
 class TestExtractProductId:
-    """Tests for YandexMarketParser.extract_product_id."""
 
     def setup_method(self) -> None:
         self.parser = YandexMarketParser()
@@ -149,13 +132,7 @@ class TestExtractProductId:
             self.parser.extract_product_id("https://yandex.ru/product/123")
 
 
-# ---------------------------------------------------------------------------
-# build_url
-# ---------------------------------------------------------------------------
-
-
 class TestBuildUrl:
-    """Tests for YandexMarketParser.build_url."""
 
     def setup_method(self) -> None:
         self.parser = YandexMarketParser()
@@ -170,20 +147,13 @@ class TestBuildUrl:
         assert url.startswith("https://market.yandex.ru/product/")
 
 
-# ---------------------------------------------------------------------------
-# parse_product (async, mocked HTTP)
-# ---------------------------------------------------------------------------
-
-
 class TestParseProduct:
-    """Tests for YandexMarketParser.parse_product with mocked HTTP."""
 
     def setup_method(self) -> None:
         self.parser = YandexMarketParser()
 
     @pytest.mark.asyncio
     async def test_parse_product_success(self) -> None:
-        """Successful parse from a product URL with JSON-LD."""
         html = _make_yandex_html_with_json_ld()
         mock_resp = _build_httpx_response(html)
         client = _mock_client(mock_resp)
@@ -202,7 +172,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_bare_id(self) -> None:
-        """Parse using a bare numeric ID (not a full URL)."""
         html = _make_yandex_html_with_json_ld()
         mock_resp = _build_httpx_response(html)
         client = _mock_client(mock_resp)
@@ -214,7 +183,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_out_of_stock(self) -> None:
-        """JSON-LD with OutOfStock availability is detected."""
         html = _make_yandex_html_with_json_ld(
             availability="https://schema.org/OutOfStock"
         )
@@ -230,7 +198,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_discount_calculated(self) -> None:
-        """Discount percentage is calculated from price and highPrice."""
         html = _make_yandex_html_with_json_ld(
             price="5000", high_price="10000",
         )
@@ -246,7 +213,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_no_discount_when_no_high_price(self) -> None:
-        """When highPrice is absent discount_percent is None."""
         html = _make_yandex_html_with_json_ld(
             price="5000", high_price=None,
         )
@@ -263,7 +229,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_json_ld_as_list(self) -> None:
-        """JSON-LD wrapped in a list is handled correctly."""
         html = _make_yandex_html_with_list_json_ld()
         mock_resp = _build_httpx_response(html)
         client = _mock_client(mock_resp)
@@ -278,7 +243,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_blocked_raises(self) -> None:
-        """HTTP 403 raises BlockedError."""
         mock_resp = httpx.Response(
             status_code=403,
             request=httpx.Request("GET", "https://market.yandex.ru/product/123456"),
@@ -293,7 +257,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_not_found_raises(self) -> None:
-        """HTTP 404 raises NotFoundError."""
         mock_resp = httpx.Response(
             status_code=404,
             request=httpx.Request("GET", "https://market.yandex.ru/product/123456"),
@@ -308,7 +271,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_no_json_ld_raises(self) -> None:
-        """Page without any JSON-LD raises ParsingError."""
         html = "<html><head></head><body>No JSON-LD</body></html>"
         mock_resp = _build_httpx_response(html)
         client = _mock_client(mock_resp)
@@ -321,7 +283,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_json_ld_without_product_type_raises(self) -> None:
-        """JSON-LD present but without @type=Product raises ParsingError."""
         json_ld = json.dumps({
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
@@ -346,7 +307,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_image_as_string(self) -> None:
-        """Single image URL string (instead of list) is handled."""
         json_ld = json.dumps({
             "@context": "https://schema.org",
             "@type": "Product",
