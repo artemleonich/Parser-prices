@@ -1,5 +1,3 @@
-"""Handlers for product tracking: add, list, detail, delete."""
-
 from __future__ import annotations
 
 import math
@@ -30,29 +28,17 @@ logger = structlog.get_logger()
 router = Router(name="products")
 
 
-# ---------------------------------------------------------------------------
-# FSM states
-# ---------------------------------------------------------------------------
-
 class AddProductStates(StatesGroup):
-    """FSM states for the add-product flow."""
-
     waiting_for_url = State()
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 def _fmt_price(value: Decimal | None) -> str:
-    """Format price with thousands separator and ruble sign."""
     if value is None:
         return "N/A"
     return f"{value:,.0f} \u20bd".replace(",", "\u202f")
 
 
 def _trend_arrow(trend: float | None) -> str:
-    """Return a human-readable trend string."""
     if trend is None:
         return "\u2014"
     if trend > 0:
@@ -69,13 +55,8 @@ MARKETPLACE_LABELS: dict[str, str] = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Add product: step 1 - ask for URL
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data == "add_product")
 async def cb_add_product(callback: CallbackQuery, state: FSMContext) -> None:
-    """Prompt user to send a product URL."""
     await state.set_state(AddProductStates.waiting_for_url)
     await callback.message.edit_text(
         "\U0001f517 \u041e\u0442\u043f\u0440\u0430\u0432\u044c\u0442\u0435 \u0441\u0441\u044b\u043b\u043a\u0443 "
@@ -87,19 +68,13 @@ async def cb_add_product(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
-# ---------------------------------------------------------------------------
-# Add product: step 2 - receive URL and parse
-# ---------------------------------------------------------------------------
-
 @router.message(AddProductStates.waiting_for_url)
 async def msg_product_url(message: Message, state: FSMContext) -> None:
-    """Receive product URL, parse it and add to tracking."""
     if message.from_user is None or not message.text:
         return
 
     url = message.text.strip()
 
-    # Basic URL validation
     if not url.startswith("http"):
         await message.answer(
             "\u274c \u041f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430, "
@@ -110,7 +85,6 @@ async def msg_product_url(message: Message, state: FSMContext) -> None:
         )
         return
 
-    # Show "processing" feedback
     processing_msg = await message.answer(
         "\u23f3 \u041e\u0431\u0440\u0430\u0431\u0430\u0442\u044b\u0432\u0430\u044e \u0441\u0441\u044b\u043b\u043a\u0443\u2026",
         parse_mode="HTML",
@@ -170,25 +144,18 @@ async def msg_product_url(message: Message, state: FSMContext) -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# My products (paginated list)
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data == "my_products")
 async def cb_my_products(callback: CallbackQuery) -> None:
-    """Show the first page of user's tracked products."""
     await _show_products_page(callback, page=0)
 
 
 @router.callback_query(F.data.startswith("products_page:"))
 async def cb_products_page(callback: CallbackQuery) -> None:
-    """Handle pagination navigation."""
     page = int(callback.data.split(":")[1])
     await _show_products_page(callback, page=page)
 
 
 async def _show_products_page(callback: CallbackQuery, page: int) -> None:
-    """Render a single page of the product list."""
     if callback.from_user is None:
         return
 
@@ -234,13 +201,8 @@ async def _show_products_page(callback: CallbackQuery, page: int) -> None:
     await callback.answer()
 
 
-# ---------------------------------------------------------------------------
-# Product detail
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data.startswith("product_detail:"))
 async def cb_product_detail(callback: CallbackQuery) -> None:
-    """Show detailed info for a single product."""
     product_id = int(callback.data.split(":")[1])
 
     async with async_session_factory() as session:
@@ -291,13 +253,8 @@ async def cb_product_detail(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-# ---------------------------------------------------------------------------
-# Price history (short summary)
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data.startswith("price_history:"))
 async def cb_price_history(callback: CallbackQuery) -> None:
-    """Show a short textual price history for a product."""
     product_id = int(callback.data.split(":")[1])
 
     async with async_session_factory() as session:
@@ -319,7 +276,6 @@ async def cb_price_history(callback: CallbackQuery) -> None:
     lines = [f"\U0001f4c8 <b>\u0418\u0441\u0442\u043e\u0440\u0438\u044f \u0446\u0435\u043d (30 \u0434\u043d.)</b>\n"]
     lines.append(f"\U0001f4e6 {product.title}\n")
 
-    # Show last 10 entries to keep the message compact
     for record in history[-10:]:
         date_str = record.recorded_at.strftime("%d.%m %H:%M")
         stock = "\u2705" if record.in_stock else "\u274c"
@@ -346,13 +302,8 @@ async def cb_price_history(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-# ---------------------------------------------------------------------------
-# Refresh price
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data.startswith("refresh_price:"))
 async def cb_refresh_price(callback: CallbackQuery) -> None:
-    """Manually refresh the price for a product."""
     product_id = int(callback.data.split(":")[1])
 
     async with async_session_factory() as session:
@@ -389,18 +340,12 @@ async def cb_refresh_price(callback: CallbackQuery) -> None:
         "\u2705 \u0426\u0435\u043d\u0430 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0430!",
         show_alert=True,
     )
-    # Re-render the product detail
     callback.data = f"product_detail:{product_id}"
     await cb_product_detail(callback)
 
 
-# ---------------------------------------------------------------------------
-# Delete product: confirm
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data.startswith("delete_product:"))
 async def cb_delete_product(callback: CallbackQuery) -> None:
-    """Ask for confirmation before deleting a product."""
     product_id = int(callback.data.split(":")[1])
 
     async with async_session_factory() as session:
@@ -421,13 +366,8 @@ async def cb_delete_product(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-# ---------------------------------------------------------------------------
-# Delete product: confirmed
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data.startswith("confirm_delete:"))
 async def cb_confirm_delete(callback: CallbackQuery) -> None:
-    """Delete the product after user confirmation."""
     if callback.from_user is None:
         return
 

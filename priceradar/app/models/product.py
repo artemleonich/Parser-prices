@@ -1,5 +1,3 @@
-"""Product and price history models."""
-
 import enum
 from datetime import datetime
 from decimal import Decimal
@@ -30,8 +28,6 @@ class Marketplace(str, enum.Enum):
 
 
 class TrackedProduct(Base):
-    """A product being tracked by a user on a marketplace."""
-
     __tablename__ = "tracked_products"
     __table_args__ = (
         UniqueConstraint("user_id", "marketplace", "external_id", name="uq_user_marketplace_product"),
@@ -66,7 +62,6 @@ class TrackedProduct(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    # Relationships
     user: Mapped["User"] = relationship(back_populates="tracked_products")  # noqa: F821
     price_history: Mapped[list["PriceHistory"]] = relationship(
         back_populates="product", cascade="all, delete-orphan"
@@ -77,8 +72,6 @@ class TrackedProduct(Base):
 
 
 class PriceHistory(Base):
-    """Historical price record for a tracked product."""
-
     __tablename__ = "price_history"
 
     id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
@@ -96,5 +89,4 @@ class PriceHistory(Base):
         DateTime(timezone=True), server_default=func.now(), index=True
     )
 
-    # Relationships
     product: Mapped["TrackedProduct"] = relationship(back_populates="price_history")

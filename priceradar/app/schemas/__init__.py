@@ -1,5 +1,3 @@
-"""Pydantic schemas for the PriceRadar application."""
-
 from app.schemas.alert import (
     AlertLogResponse,
     AlertRuleCreate,
@@ -16,13 +14,11 @@ from app.schemas.product import (
 )
 
 __all__ = [
-    # Product
     "Marketplace",
     "ProductCreate",
     "ProductUpdate",
     "ProductResponse",
     "PriceHistoryResponse",
-    # Alert
     "RuleType",
     "AlertRuleCreate",
     "AlertRuleUpdate",

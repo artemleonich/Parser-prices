@@ -1,5 +1,3 @@
-"""Unit tests for the Wildberries parser."""
-
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -9,10 +7,6 @@ import pytest
 from app.parsers.wildberries import WildberriesParser
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 def _make_wb_api_response(
     product_id: int = 12345,
     name: str = "Test Product",
@@ -21,7 +15,6 @@ def _make_wb_api_response(
     sale: int = 35,
     total_quantity: int = 10,
 ) -> dict:
-    """Build a mock Wildberries card-detail API JSON payload."""
     return {
         "data": {
             "products": [
@@ -39,7 +32,6 @@ def _make_wb_api_response(
 
 
 def _build_httpx_response(json_body: dict, status_code: int = 200) -> httpx.Response:
-    """Create a minimal httpx.Response with the given JSON body."""
     response = httpx.Response(
         status_code=status_code,
         json=json_body,
@@ -48,13 +40,7 @@ def _build_httpx_response(json_body: dict, status_code: int = 200) -> httpx.Resp
     return response
 
 
-# ---------------------------------------------------------------------------
-# extract_product_id
-# ---------------------------------------------------------------------------
-
-
 class TestExtractProductId:
-    """Tests for WildberriesParser.extract_product_id."""
 
     def setup_method(self) -> None:
         self.parser = WildberriesParser()
@@ -84,13 +70,7 @@ class TestExtractProductId:
         assert self.parser.extract_product_id(url) == "11223344"
 
 
-# ---------------------------------------------------------------------------
-# build_url
-# ---------------------------------------------------------------------------
-
-
 class TestBuildUrl:
-    """Tests for WildberriesParser.build_url."""
 
     def setup_method(self) -> None:
         self.parser = WildberriesParser()
@@ -104,20 +84,13 @@ class TestBuildUrl:
         assert "99999999" in url
 
 
-# ---------------------------------------------------------------------------
-# parse_product (async, mocked HTTP)
-# ---------------------------------------------------------------------------
-
-
 class TestParseProduct:
-    """Tests for WildberriesParser.parse_product with mocked HTTP."""
 
     def setup_method(self) -> None:
         self.parser = WildberriesParser()
 
     @pytest.mark.asyncio
     async def test_parse_product_from_url(self) -> None:
-        """Full parse from a product URL returns correct ParsedProduct."""
         api_json = _make_wb_api_response()
         mock_response = _build_httpx_response(api_json)
 
@@ -140,7 +113,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_from_bare_id(self) -> None:
-        """Parse using a bare numeric ID (not a full URL)."""
         api_json = _make_wb_api_response(product_id=999)
         mock_response = _build_httpx_response(api_json)
 
@@ -157,7 +129,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_out_of_stock(self) -> None:
-        """Product with totalQuantity=0 is reported as out of stock."""
         api_json = _make_wb_api_response(total_quantity=0)
         mock_response = _build_httpx_response(api_json)
 
@@ -173,7 +144,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_blocked_raises(self) -> None:
-        """HTTP 403 raises BlockedError."""
         mock_response = httpx.Response(
             status_code=403,
             request=httpx.Request("GET", "https://card.wb.ru/cards/v2/detail"),
@@ -192,7 +162,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_not_found_raises(self) -> None:
-        """HTTP 404 raises NotFoundError."""
         mock_response = httpx.Response(
             status_code=404,
             request=httpx.Request("GET", "https://card.wb.ru/cards/v2/detail"),
@@ -211,7 +180,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_empty_products_raises(self) -> None:
-        """An API response with an empty products list raises NotFoundError."""
         api_json = {"data": {"products": []}}
         mock_response = _build_httpx_response(api_json)
 
@@ -228,7 +196,6 @@ class TestParseProduct:
 
     @pytest.mark.asyncio
     async def test_parse_product_image_url_generated(self) -> None:
-        """Image URL is derived from the product ID."""
         api_json = _make_wb_api_response(product_id=12345)
         mock_response = _build_httpx_response(api_json)
 

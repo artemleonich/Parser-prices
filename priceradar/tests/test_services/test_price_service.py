@@ -1,5 +1,3 @@
-"""Unit tests for PriceService."""
-
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -14,19 +12,12 @@ from app.parsers.base import ParsedProduct
 from app.services.price_service import PriceService
 
 
-# ---------------------------------------------------------------------------
-# add_product
-# ---------------------------------------------------------------------------
-
-
 class TestAddProduct:
-    """Tests for PriceService.add_product."""
 
     @pytest.mark.asyncio
     async def test_add_product_success(
         self, db_session: AsyncSession, test_user: User,
     ) -> None:
-        """Adding a valid Wildberries URL creates a TrackedProduct."""
         parsed = ParsedProduct(
             external_id="55555555",
             title="New WB Product",
@@ -63,8 +54,6 @@ class TestAddProduct:
     async def test_add_product_limit_reached(
         self, db_session: AsyncSession, test_user: User,
     ) -> None:
-        """Adding a product when the user is at their limit raises ValueError."""
-        # Fill up to the FREE limit (5 products).
         for i in range(5):
             p = TrackedProduct(
                 user_id=test_user.id,
@@ -89,7 +78,6 @@ class TestAddProduct:
     async def test_add_product_unsupported_marketplace(
         self, db_session: AsyncSession, test_user: User,
     ) -> None:
-        """An unsupported marketplace URL raises ValueError."""
         service = PriceService(db_session)
 
         with pytest.raises(ValueError, match="Unsupported marketplace URL"):
@@ -99,7 +87,6 @@ class TestAddProduct:
     async def test_add_product_duplicate(
         self, db_session: AsyncSession, test_user: User, test_product: TrackedProduct,
     ) -> None:
-        """Adding a product that already exists raises ValueError."""
         parsed = ParsedProduct(
             external_id=test_product.external_id,
             title="Duplicate",
@@ -123,19 +110,12 @@ class TestAddProduct:
                 )
 
 
-# ---------------------------------------------------------------------------
-# get_user_products
-# ---------------------------------------------------------------------------
-
-
 class TestGetUserProducts:
-    """Tests for PriceService.get_user_products."""
 
     @pytest.mark.asyncio
     async def test_get_user_products_returns_active(
         self, db_session: AsyncSession, test_user: User, test_product: TrackedProduct,
     ) -> None:
-        """Active products are returned by default."""
         service = PriceService(db_session)
         products = await service.get_user_products(test_user.id)
         assert len(products) == 1
@@ -145,7 +125,6 @@ class TestGetUserProducts:
     async def test_get_user_products_excludes_inactive(
         self, db_session: AsyncSession, test_user: User,
     ) -> None:
-        """Inactive products are excluded when active_only=True."""
         inactive = TrackedProduct(
             user_id=test_user.id,
             marketplace=Marketplace.WILDBERRIES,
@@ -165,7 +144,6 @@ class TestGetUserProducts:
     async def test_get_user_products_includes_inactive(
         self, db_session: AsyncSession, test_user: User,
     ) -> None:
-        """All products returned when active_only=False."""
         inactive = TrackedProduct(
             user_id=test_user.id,
             marketplace=Marketplace.WILDBERRIES,
@@ -185,25 +163,17 @@ class TestGetUserProducts:
     async def test_get_user_products_empty_for_unknown_user(
         self, db_session: AsyncSession,
     ) -> None:
-        """Unknown user_id returns an empty list."""
         service = PriceService(db_session)
         products = await service.get_user_products(999999)
         assert products == []
 
 
-# ---------------------------------------------------------------------------
-# update_product_price
-# ---------------------------------------------------------------------------
-
-
 class TestUpdateProductPrice:
-    """Tests for PriceService.update_product_price."""
 
     @pytest.mark.asyncio
     async def test_update_product_price_changed(
         self, db_session: AsyncSession, test_product: TrackedProduct,
     ) -> None:
-        """When price differs, the method updates and returns True."""
         parsed = ParsedProduct(
             external_id=test_product.external_id,
             title="Updated Title",
@@ -226,7 +196,6 @@ class TestUpdateProductPrice:
     async def test_update_product_price_unchanged(
         self, db_session: AsyncSession, test_product: TrackedProduct,
     ) -> None:
-        """When the price is the same, the method returns False."""
         parsed = ParsedProduct(
             external_id=test_product.external_id,
             title=test_product.title,
@@ -243,7 +212,6 @@ class TestUpdateProductPrice:
     async def test_update_product_price_records_history(
         self, db_session: AsyncSession, test_product: TrackedProduct,
     ) -> None:
-        """A PriceHistory record is created on every update."""
         parsed = ParsedProduct(
             external_id=test_product.external_id,
             title=test_product.title,
@@ -268,7 +236,6 @@ class TestUpdateProductPrice:
     async def test_update_resets_parse_errors(
         self, db_session: AsyncSession, test_product: TrackedProduct,
     ) -> None:
-        """parse_errors_count is reset to 0 after successful update."""
         test_product.parse_errors_count = 3
 
         parsed = ParsedProduct(
@@ -284,19 +251,12 @@ class TestUpdateProductPrice:
         assert test_product.parse_errors_count == 0
 
 
-# ---------------------------------------------------------------------------
-# get_price_trend
-# ---------------------------------------------------------------------------
-
-
 class TestGetPriceTrend:
-    """Tests for PriceService.get_price_trend."""
 
     @pytest.mark.asyncio
     async def test_price_trend_increasing(
         self, db_session: AsyncSession, test_product: TrackedProduct,
     ) -> None:
-        """Positive trend when the latest price is higher than the earliest."""
         now = datetime.now(timezone.utc)
 
         h1 = PriceHistory(
@@ -324,7 +284,6 @@ class TestGetPriceTrend:
     async def test_price_trend_decreasing(
         self, db_session: AsyncSession, test_product: TrackedProduct,
     ) -> None:
-        """Negative trend when the latest price is lower than the earliest."""
         now = datetime.now(timezone.utc)
 
         h1 = PriceHistory(
@@ -352,7 +311,6 @@ class TestGetPriceTrend:
     async def test_price_trend_insufficient_data(
         self, db_session: AsyncSession, test_product: TrackedProduct,
     ) -> None:
-        """Returns None when there are fewer than 2 history records."""
         service = PriceService(db_session)
         trend = await service.get_price_trend(test_product.id, days=7)
         assert trend is None
@@ -361,7 +319,6 @@ class TestGetPriceTrend:
     async def test_price_trend_flat(
         self, db_session: AsyncSession, test_product: TrackedProduct,
     ) -> None:
-        """Returns 0.0 when price is unchanged."""
         now = datetime.now(timezone.utc)
 
         h1 = PriceHistory(
@@ -385,19 +342,12 @@ class TestGetPriceTrend:
         assert trend == pytest.approx(0.0)
 
 
-# ---------------------------------------------------------------------------
-# can_add_product
-# ---------------------------------------------------------------------------
-
-
 class TestCanAddProduct:
-    """Tests for PriceService.can_add_product limit checking."""
 
     @pytest.mark.asyncio
     async def test_can_add_product_free_plan_under_limit(
         self, db_session: AsyncSession, test_user: User,
     ) -> None:
-        """FREE plan user with no products can add one."""
         service = PriceService(db_session)
         assert await service.can_add_product(test_user) is True
 
@@ -405,7 +355,6 @@ class TestCanAddProduct:
     async def test_cannot_add_product_free_plan_at_limit(
         self, db_session: AsyncSession, test_user: User,
     ) -> None:
-        """FREE plan user with 5 products cannot add more."""
         for i in range(5):
             p = TrackedProduct(
                 user_id=test_user.id,
@@ -425,7 +374,6 @@ class TestCanAddProduct:
     async def test_can_add_product_basic_plan_higher_limit(
         self, db_session: AsyncSession,
     ) -> None:
-        """BASIC plan has a higher limit (50) so adding is allowed."""
         basic_user = User(
             telegram_id=999999,
             first_name="Basic",
@@ -441,7 +389,6 @@ class TestCanAddProduct:
     async def test_inactive_products_not_counted(
         self, db_session: AsyncSession, test_user: User,
     ) -> None:
-        """Inactive (deactivated) products do not count towards the limit."""
         for i in range(5):
             p = TrackedProduct(
                 user_id=test_user.id,

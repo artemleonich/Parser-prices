@@ -1,5 +1,3 @@
-"""Business logic for alert rules and notifications."""
-
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -15,8 +13,6 @@ logger = structlog.get_logger()
 
 
 class AlertService:
-    """Service for managing alert rules and checking triggers."""
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -27,7 +23,6 @@ class AlertService:
         product_id: int | None = None,
         threshold_value: Decimal | None = None,
     ) -> AlertRule:
-        """Create a new alert rule."""
         rule = AlertRule(
             user_id=user_id,
             product_id=product_id,
@@ -48,7 +43,6 @@ class AlertService:
     async def get_user_alert_rules(
         self, user_id: int, active_only: bool = True
     ) -> list[AlertRule]:
-        """Get all alert rules for a user."""
         stmt = select(AlertRule).where(AlertRule.user_id == user_id)
         if active_only:
             stmt = stmt.where(AlertRule.is_active.is_(True))
@@ -58,7 +52,7 @@ class AlertService:
     async def get_product_alert_rules(
         self, user_id: int, product_id: int
     ) -> list[AlertRule]:
-        """Get alert rules for a specific product (including global rules)."""
+        """Returns rules for this specific product plus global (product_id=None) rules."""
         stmt = (
             select(AlertRule)
             .where(
@@ -76,7 +70,6 @@ class AlertService:
         return list(result.scalars().all())
 
     async def delete_alert_rule(self, rule_id: int, user_id: int) -> bool:
-        """Delete an alert rule."""
         rule = await self.session.get(AlertRule, rule_id)
         if rule is None or rule.user_id != user_id:
             return False
@@ -88,14 +81,9 @@ class AlertService:
         rule: AlertRule,
         product: TrackedProduct,
     ) -> bool:
-        """Check if an alert rule is triggered for a product.
-
-        Returns True if the alert should fire.
-        """
         if product.current_price is None or product.previous_price is None:
-            # Special case: back_in_stock doesn't need price comparison
             if rule.rule_type == RuleType.BACK_IN_STOCK:
-                return False  # Handled separately via in_stock flag
+                return False  # handled via in_stock flag
             return False
 
         old_price = product.previous_price
@@ -130,14 +118,13 @@ class AlertService:
                 return new_price >= rule.threshold_value
 
             case RuleType.BACK_IN_STOCK:
-                return False  # Handled via stock status, not price
+                return False  # handled via stock status, not price
 
         return False
 
     async def process_product_alerts(
         self, product: TrackedProduct
     ) -> list[AlertLog]:
-        """Check all alert rules for a product and create logs for triggered ones."""
         rules = await self.get_product_alert_rules(product.user_id, product.id)
         triggered_logs: list[AlertLog] = []
 
@@ -168,12 +155,10 @@ class AlertService:
         return triggered_logs
 
     async def mark_alert_sent(self, alert_log: AlertLog) -> None:
-        """Mark an alert log as successfully sent."""
         alert_log.message_sent = True
         alert_log.sent_at = datetime.now(timezone.utc)
 
     async def get_unsent_alerts(self) -> list[AlertLog]:
-        """Get all unsent alert logs with related data."""
         stmt = (
             select(AlertLog)
             .where(AlertLog.message_sent.is_(False))
@@ -192,7 +177,6 @@ class AlertService:
         product: TrackedProduct,
         min_price_30d: Decimal | None = None,
     ) -> str:
-        """Format an alert message for Telegram."""
         old_price = log.old_price
         new_price = log.new_price
 

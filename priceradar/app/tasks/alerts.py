@@ -1,5 +1,3 @@
-"""Celery tasks for alert checking and notification sending."""
-
 import asyncio
 from datetime import datetime, timedelta, timezone
 
@@ -18,7 +16,6 @@ logger = structlog.get_logger()
 
 
 async def _send_telegram_alert(telegram_id: int, message: str, product_url: str) -> bool:
-    """Send an alert message to a user via Telegram bot API."""
     import httpx
 
     bot_token = settings.TELEGRAM_BOT_TOKEN
@@ -28,7 +25,6 @@ async def _send_telegram_alert(telegram_id: int, message: str, product_url: str)
 
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
 
-    # Build inline keyboard with link to product
     keyboard = {
         "inline_keyboard": [
             [
@@ -55,9 +51,7 @@ async def _send_telegram_alert(telegram_id: int, message: str, product_url: str)
 
 
 async def _check_all_alerts() -> dict:
-    """Check recently updated products for triggered alerts and send notifications."""
     async with async_session_factory() as session:
-        # Find products updated in the last 5 minutes
         cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
 
         stmt = (
@@ -119,12 +113,10 @@ async def _check_all_alerts() -> dict:
 
 @celery_app.task(name="app.tasks.alerts.check_all_alerts")
 def check_all_alerts() -> dict:
-    """Celery task: check all alerts for recently updated products."""
     return asyncio.run(_check_all_alerts())
 
 
 async def _send_unsent_alerts() -> dict:
-    """Retry sending any alerts that failed to send."""
     async with async_session_factory() as session:
         alert_svc = AlertService(session)
         price_svc = PriceService(session)
@@ -162,5 +154,4 @@ async def _send_unsent_alerts() -> dict:
 
 @celery_app.task(name="app.tasks.alerts.send_unsent_alerts")
 def send_unsent_alerts() -> dict:
-    """Celery task: retry sending failed alert notifications."""
     return asyncio.run(_send_unsent_alerts())

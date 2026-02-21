@@ -1,5 +1,3 @@
-"""Pydantic schemas for AlertRule and AlertLog."""
-
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
@@ -8,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class RuleType(str, Enum):
-    """Types of alert rules a user can create."""
 
     PRICE_DROP = "price_drop"
     PRICE_RISE = "price_rise"
@@ -17,13 +14,7 @@ class RuleType(str, Enum):
     BACK_IN_STOCK = "back_in_stock"
 
 
-# ---------------------------------------------------------------------------
-# AlertRule schemas
-# ---------------------------------------------------------------------------
-
-
 class AlertRuleCreate(BaseModel):
-    """Schema for creating a new alert rule."""
 
     product_id: int | None = Field(
         None, description="Tracked-product ID; omit for account-wide rules"
@@ -38,7 +29,6 @@ class AlertRuleCreate(BaseModel):
 
     @model_validator(mode="after")
     def _validate_threshold(self) -> "AlertRuleCreate":
-        """Ensure threshold_value is provided for threshold-based rules."""
         threshold_rules = {RuleType.PRICE_BELOW, RuleType.PRICE_ABOVE}
         if self.rule_type in threshold_rules and self.threshold_value is None:
             raise ValueError(
@@ -60,7 +50,6 @@ class AlertRuleCreate(BaseModel):
 
 
 class AlertRuleUpdate(BaseModel):
-    """Schema for updating an existing alert rule."""
 
     rule_type: RuleType | None = None
     threshold_value: Decimal | None = Field(None, ge=0, decimal_places=2)
@@ -74,7 +63,6 @@ class AlertRuleUpdate(BaseModel):
 
 
 class AlertRuleResponse(BaseModel):
-    """Full representation of an alert rule returned to the client."""
 
     id: int
     user_id: int
@@ -87,13 +75,7 @@ class AlertRuleResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ---------------------------------------------------------------------------
-# AlertLog schemas
-# ---------------------------------------------------------------------------
-
-
 class AlertLogResponse(BaseModel):
-    """Single alert-log entry returned to the client."""
 
     id: int
     alert_rule_id: int

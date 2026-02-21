@@ -1,5 +1,3 @@
-"""Handler for /start command and help callback."""
-
 from __future__ import annotations
 
 import structlog
@@ -15,10 +13,6 @@ from app.services.subscription_service import SubscriptionService
 logger = structlog.get_logger()
 
 router = Router(name="start")
-
-# ---------------------------------------------------------------------------
-# Welcome text
-# ---------------------------------------------------------------------------
 
 WELCOME_TEXT: str = (
     "\U0001f4e1 <b>PriceRadar</b> \u2014 \u0432\u0430\u0448 \u043f\u043e\u043c\u043e\u0449\u043d\u0438\u043a "
@@ -55,13 +49,8 @@ HELP_TEXT: str = (
 )
 
 
-# ---------------------------------------------------------------------------
-# /start command
-# ---------------------------------------------------------------------------
-
 @router.message(CommandStart())
 async def cmd_start(message: Message) -> None:
-    """Handle /start command: register user and show main menu."""
     if message.from_user is None:
         return
 
@@ -87,13 +76,8 @@ async def cmd_start(message: Message) -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# Main menu callback (return to menu from anywhere)
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data == "main_menu")
 async def cb_main_menu(callback: CallbackQuery) -> None:
-    """Return to the main menu."""
     await callback.message.edit_text(
         WELCOME_TEXT,
         reply_markup=main_menu_keyboard(),
@@ -102,13 +86,8 @@ async def cb_main_menu(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-# ---------------------------------------------------------------------------
-# Help callback
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data == "help")
 async def cb_help(callback: CallbackQuery) -> None:
-    """Show help / feature description."""
     await callback.message.edit_text(
         HELP_TEXT,
         reply_markup=main_menu_keyboard(),

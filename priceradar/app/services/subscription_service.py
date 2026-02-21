@@ -1,5 +1,3 @@
-"""Business logic for user subscriptions."""
-
 from datetime import datetime, timedelta, timezone
 
 import structlog
@@ -11,7 +9,6 @@ from app.models.user import PLAN_LIMITS, SubscriptionPlan, User
 
 logger = structlog.get_logger()
 
-# Pricing in rubles
 PLAN_PRICES = {
     SubscriptionPlan.BASIC: 990,
     SubscriptionPlan.PRO: 2490,
@@ -21,8 +18,6 @@ PLAN_DURATION_DAYS = 30
 
 
 class SubscriptionService:
-    """Service for managing user subscriptions and payments."""
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -32,13 +27,11 @@ class SubscriptionService:
         first_name: str,
         username: str | None = None,
     ) -> User:
-        """Get existing user or create a new one."""
         stmt = select(User).where(User.telegram_id == telegram_id)
         result = await self.session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if user is not None:
-            # Update profile info
             user.first_name = first_name
             if username:
                 user.telegram_username = username
@@ -58,7 +51,6 @@ class SubscriptionService:
         return user
 
     async def get_user_by_telegram_id(self, telegram_id: int) -> User | None:
-        """Find a user by their Telegram ID."""
         stmt = select(User).where(User.telegram_id == telegram_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
@@ -66,10 +58,9 @@ class SubscriptionService:
     async def activate_subscription(
         self, user: User, plan: SubscriptionPlan
     ) -> None:
-        """Activate or renew a paid subscription."""
         now = datetime.now(timezone.utc)
 
-        # If current subscription is still active, extend it
+        # extend if current sub is still active on the same plan
         if (
             user.subscription_expires_at
             and user.subscription_expires_at > now
@@ -90,10 +81,7 @@ class SubscriptionService:
         )
 
     async def check_and_downgrade_expired(self, user: User) -> bool:
-        """Check if subscription expired and downgrade to free.
-
-        Returns True if user was downgraded.
-        """
+        """Returns True if user was downgraded."""
         if user.subscription_plan == SubscriptionPlan.FREE:
             return False
 
@@ -104,7 +92,6 @@ class SubscriptionService:
         user.subscription_plan = SubscriptionPlan.FREE
         user.max_tracked_products = PLAN_LIMITS[SubscriptionPlan.FREE]["max_products"]
 
-        # Deactivate products over the free limit
         await self._deactivate_excess_products(user)
 
         logger.info(
@@ -115,10 +102,7 @@ class SubscriptionService:
         return True
 
     async def _deactivate_excess_products(self, user: User) -> int:
-        """Deactivate products that exceed the current plan limit.
-
-        Returns number of deactivated products.
-        """
+        """Returns number of deactivated products."""
         limit = PLAN_LIMITS[user.subscription_plan]["max_products"]
         stmt = (
             select(TrackedProduct)
@@ -132,7 +116,7 @@ class SubscriptionService:
         products = list(result.scalars().all())
 
         deactivated = 0
-        # Keep the oldest products active, deactivate the rest
+        # keep the oldest products, deactivate the rest
         for product in products[limit:]:
             product.is_active = False
             deactivated += 1
@@ -147,7 +131,6 @@ class SubscriptionService:
         return deactivated
 
     def get_plan_info(self, plan: SubscriptionPlan) -> dict:
-        """Get plan information including limits and pricing."""
         limits = PLAN_LIMITS[plan]
         return {
             "name": plan.value,
@@ -157,7 +140,6 @@ class SubscriptionService:
         }
 
     def format_subscription_info(self, user: User) -> str:
-        """Format subscription info for display in Telegram."""
         plan_names = {
             SubscriptionPlan.FREE: "Free",
             SubscriptionPlan.BASIC: "Basic (990 \u20bd/\u043c\u0435\u0441)",

@@ -1,5 +1,3 @@
-"""Handlers for alert rule management."""
-
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
@@ -23,19 +21,9 @@ logger = structlog.get_logger()
 router = Router(name="alerts")
 
 
-# ---------------------------------------------------------------------------
-# FSM states
-# ---------------------------------------------------------------------------
-
 class AlertStates(StatesGroup):
-    """FSM states for custom-price alert creation."""
-
     waiting_for_price = State()
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 RULE_TYPE_LABELS: dict[RuleType, str] = {
     RuleType.PRICE_DROP: "\U0001f4c9 \u0421\u043d\u0438\u0436\u0435\u043d\u0438\u0435 \u0446\u0435\u043d\u044b",
@@ -53,7 +41,6 @@ def _fmt_price(value: Decimal | None) -> str:
 
 
 def _format_rule(rule: AlertRule) -> str:
-    """Format a single alert rule for display."""
     label = RULE_TYPE_LABELS.get(rule.rule_type, rule.rule_type.value)
     threshold = ""
     if rule.threshold_value is not None:
@@ -62,13 +49,8 @@ def _format_rule(rule: AlertRule) -> str:
     return f"{status} {label}{threshold}"
 
 
-# ---------------------------------------------------------------------------
-# Show current alerts
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data == "alerts_settings")
 async def cb_alerts_settings(callback: CallbackQuery) -> None:
-    """Show the user's current alert rules."""
     if callback.from_user is None:
         return
 
@@ -83,7 +65,6 @@ async def cb_alerts_settings(callback: CallbackQuery) -> None:
         alert_svc = AlertService(session)
         rules = await alert_svc.get_user_alert_rules(user.id, active_only=False)
 
-        # Also load product titles for context
         price_svc = PriceService(session)
         products_map: dict[int, str] = {}
         for rule in rules:
@@ -131,13 +112,8 @@ async def cb_alerts_settings(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-# ---------------------------------------------------------------------------
-# Add alert from product detail
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data.startswith("add_alert:"))
 async def cb_add_alert(callback: CallbackQuery) -> None:
-    """Show alert type selection for a product."""
     product_id = int(callback.data.split(":")[1])
 
     await callback.message.edit_text(
@@ -148,13 +124,8 @@ async def cb_add_alert(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-# ---------------------------------------------------------------------------
-# Alert type: price drop
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data.startswith("alert_drop:"))
 async def cb_alert_drop(callback: CallbackQuery) -> None:
-    """Create a price-drop alert rule for the product."""
     if callback.from_user is None:
         return
 
@@ -186,13 +157,8 @@ async def cb_alert_drop(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-# ---------------------------------------------------------------------------
-# Alert type: back in stock
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data.startswith("alert_stock:"))
 async def cb_alert_stock(callback: CallbackQuery) -> None:
-    """Create a back-in-stock alert rule for the product."""
     if callback.from_user is None:
         return
 
@@ -224,13 +190,8 @@ async def cb_alert_stock(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-# ---------------------------------------------------------------------------
-# Alert type: custom price (step 1 - ask for price)
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data.startswith("alert_custom:"))
 async def cb_alert_custom(callback: CallbackQuery, state: FSMContext) -> None:
-    """Ask user to enter target price for the alert."""
     product_id = int(callback.data.split(":")[1])
 
     await state.set_state(AlertStates.waiting_for_price)
@@ -246,13 +207,8 @@ async def cb_alert_custom(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
-# ---------------------------------------------------------------------------
-# Alert type: custom price (step 2 - receive price)
-# ---------------------------------------------------------------------------
-
 @router.message(AlertStates.waiting_for_price)
 async def msg_custom_price(message: Message, state: FSMContext) -> None:
-    """Receive the target price and create PRICE_BELOW alert."""
     if message.from_user is None or not message.text:
         return
 
@@ -302,13 +258,8 @@ async def msg_custom_price(message: Message, state: FSMContext) -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# Delete alert
-# ---------------------------------------------------------------------------
-
 @router.callback_query(F.data.startswith("delete_alert:"))
 async def cb_delete_alert(callback: CallbackQuery) -> None:
-    """Delete an alert rule."""
     if callback.from_user is None:
         return
 

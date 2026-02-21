@@ -1,5 +1,3 @@
-"""Web dashboard routes using Jinja2 + HTMX."""
-
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -16,7 +14,6 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> RedirectResponse:
-    """Redirect root to dashboard."""
     return RedirectResponse(url="/dashboard")
 
 
@@ -26,13 +23,11 @@ async def dashboard(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
-    """Main dashboard page showing tracked products."""
     svc = PriceService(session)
     products = await svc.get_user_products(user.id)
     product_count = len(products)
     limits = PLAN_LIMITS[user.subscription_plan]
 
-    # Calculate trends for each product
     product_data = []
     for p in products:
         trend = await svc.get_price_trend(p.id, days=7)
@@ -63,7 +58,6 @@ async def product_detail(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
-    """Product detail page with price chart."""
     svc = PriceService(session)
     product = await svc.get_product_by_id(product_id)
 
@@ -74,7 +68,6 @@ async def product_detail(
     min_price = await svc.get_min_price(product_id, days)
     trend = await svc.get_price_trend(product_id, days=7)
 
-    # Prepare chart data
     chart_labels = [h.recorded_at.strftime("%d.%m %H:%M") for h in history]
     chart_prices = [float(h.price) for h in history]
     chart_original = [float(h.original_price) if h.original_price else None for h in history]
@@ -103,7 +96,6 @@ async def products_table_partial(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
-    """HTMX partial: refreshable products table."""
     svc = PriceService(session)
     products = await svc.get_user_products(user.id)
 
@@ -126,7 +118,6 @@ async def products_table_partial(
 
 
 def _trend_arrow(trend: float | None) -> str:
-    """Return a trend indicator arrow."""
     if trend is None:
         return "\u2192"
     if trend > 1:

@@ -1,5 +1,3 @@
-"""Wildberries marketplace parser using the public JSON card API."""
-
 from __future__ import annotations
 
 import re
@@ -28,59 +26,19 @@ _PRODUCT_ID_RE = re.compile(r"wildberries\.ru/catalog/(\d+)")
 
 
 class WildberriesParser(BaseParser):
-    """Parser for **Wildberries** product pages.
-
-    Uses the public JSON card API to retrieve product details without
-    rendering the page.
-    """
-
     marketplace: str = "wildberries"
 
     def extract_product_id(self, url: str) -> str:
-        """Extract the numeric article ID from a Wildberries URL.
-
-        Args:
-            url: Full product URL, e.g.
-                ``https://www.wildberries.ru/catalog/12345678/detail.aspx``
-
-        Returns:
-            Article ID string.
-
-        Raises:
-            ValueError: If the URL does not match the expected pattern.
-        """
         match = _PRODUCT_ID_RE.search(url)
         if not match:
             raise ValueError(f"Cannot extract Wildberries product ID from URL: {url}")
         return match.group(1)
 
     def build_url(self, product_id: str) -> str:
-        """Build a canonical Wildberries product URL.
-
-        Args:
-            product_id: Numeric article ID.
-
-        Returns:
-            Full URL string.
-        """
         return f"https://www.wildberries.ru/catalog/{product_id}/detail.aspx"
 
     @retry_request
     async def parse_product(self, url_or_id: str) -> ParsedProduct:
-        """Fetch product data from the Wildberries JSON API.
-
-        Args:
-            url_or_id: Full product URL or a bare numeric article ID.
-
-        Returns:
-            :class:`ParsedProduct` with normalised data.
-
-        Raises:
-            NotFoundError: Product does not exist.
-            ParsingError: Unexpected API response structure.
-            BlockedError: Request was blocked by the marketplace.
-        """
-        # Determine the article ID.
         if url_or_id.startswith("http") or "wildberries.ru" in url_or_id:
             product_id = self.extract_product_id(url_or_id)
         else:
@@ -114,10 +72,9 @@ class WildberriesParser(BaseParser):
 
         product: dict[str, Any] = products[0]
 
-        # --- title ---
         title: str = product.get("name", "")
 
-        # --- prices (API returns values in kopecks) ---
+        # цены в API приходят в копейках
         sale_price_raw: int = product.get("salePriceU", 0)
         price = Decimal(sale_price_raw) / Decimal(100)
 
@@ -126,17 +83,13 @@ class WildberriesParser(BaseParser):
             Decimal(original_price_raw) / Decimal(100) if original_price_raw else None
         )
 
-        # --- discount ---
         discount_percent: int | None = product.get("sale")
         if discount_percent is None and original_price and original_price > 0 and price < original_price:
             discount_percent = int(
                 ((original_price - price) / original_price * 100)
             )
 
-        # --- stock ---
         in_stock = _check_stock(product)
-
-        # --- image ---
         image_url = _build_image_url(product_id)
 
         parsed = ParsedProduct(
@@ -159,19 +112,11 @@ class WildberriesParser(BaseParser):
         return parsed
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-
 def _check_stock(product: dict[str, Any]) -> bool:
-    """Return ``True`` when the product has any quantity available."""
-    # First, check the top-level totalQuantity field.
     total_qty = product.get("totalQuantity")
     if total_qty is not None:
         return int(total_qty) > 0
 
-    # Fallback: sum over sizes -> stocks -> qty.
     for size in product.get("sizes", []):
         for stock in size.get("stocks", []):
             if int(stock.get("qty", 0)) > 0:
@@ -180,15 +125,7 @@ def _check_stock(product: dict[str, Any]) -> bool:
 
 
 def _build_image_url(product_id: str) -> str | None:
-    """Construct a product image URL from the Wildberries vol/part/id scheme.
-
-    Wildberries hosts images at a CDN path derived from the article ID:
-    * ``vol``  = id // 100_000
-    * ``part`` = id // 1_000
-    * basket host index depends on the vol range.
-
-    Returns ``None`` if the ID is not numeric.
-    """
+    """CDN-ссылка на картинку по схеме vol/part/id."""
     try:
         pid = int(product_id)
     except ValueError:
@@ -197,7 +134,6 @@ def _build_image_url(product_id: str) -> str | None:
     vol = pid // 100_000
     part = pid // 1_000
 
-    # Determine basket host index based on vol ranges.
     if vol <= 143:
         basket = "01"
     elif vol <= 287:

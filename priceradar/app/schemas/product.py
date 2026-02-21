@@ -1,5 +1,3 @@
-"""Pydantic schemas for TrackedProduct and PriceHistory."""
-
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
@@ -8,20 +6,13 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class Marketplace(str, Enum):
-    """Supported marketplace platforms."""
 
     WILDBERRIES = "wildberries"
     OZON = "ozon"
     YANDEX_MARKET = "yandex_market"
 
 
-# ---------------------------------------------------------------------------
-# TrackedProduct schemas
-# ---------------------------------------------------------------------------
-
-
 class ProductCreate(BaseModel):
-    """Schema for adding a new product to track."""
 
     url: HttpUrl = Field(..., description="Product page URL on the marketplace")
 
@@ -35,7 +26,6 @@ class ProductCreate(BaseModel):
 
 
 class ProductUpdate(BaseModel):
-    """Schema for updating an existing tracked product."""
 
     title: str | None = Field(None, max_length=500)
     is_active: bool | None = None
@@ -48,7 +38,6 @@ class ProductUpdate(BaseModel):
 
 
 class ProductResponse(BaseModel):
-    """Full representation of a tracked product returned to the client."""
 
     id: int
     user_id: int
@@ -68,13 +57,7 @@ class ProductResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ---------------------------------------------------------------------------
-# PriceHistory schemas
-# ---------------------------------------------------------------------------
-
-
 class PriceHistoryResponse(BaseModel):
-    """Single price-history record returned to the client."""
 
     id: int
     product_id: int
