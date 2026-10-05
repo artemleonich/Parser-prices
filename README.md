@@ -1,3 +1,7 @@
+<p align="center">
+  <img src=".github/assets/mark.svg" width="40" height="40" alt="PriceRadar" />
+</p>
+
 <h1 align="center">PriceRadar</h1>
 
 <p align="center"><strong>Цены меняются. PriceRadar следит за ними.</strong></p>
