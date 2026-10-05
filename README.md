@@ -1,10 +1,10 @@
+<h1 align="center">PriceRadar</h1>
+
+<p align="center"><strong>Цены меняются. PriceRadar следит за ними.</strong></p>
+
 <p align="center">
-  <img src=".github/assets/banner.svg" width="100%" alt="PriceRadar" />
+  <img src=".github/assets/stack.svg" height="28" alt="Python · FastAPI · PostgreSQL · Docker" />
 </p>
-
-# PriceRadar
-
-**Цены меняются. PriceRadar следит за ними.**
 
 MVP сервиса мониторинга Wildberries, Ozon и Яндекс Маркета: Telegram-бот, история цен, веб-дашборд и уведомления по правилам.
 
