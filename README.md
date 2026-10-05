@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".github/assets/mark.svg" width="40" height="40" alt="PriceRadar" />
+  <a href=".github/assets/light/mark.svg#gh-light-mode-only"><img src=".github/assets/light/mark.svg" width="40" height="40" alt="PriceRadar" /></a><a href=".github/assets/mark.svg#gh-dark-mode-only"><img src=".github/assets/mark.svg" width="40" height="40" alt="PriceRadar" /></a>
 </p>
 
 <h1 align="center">PriceRadar</h1>
@@ -7,7 +7,7 @@
 <p align="center"><strong>Цены меняются. PriceRadar следит за ними.</strong></p>
 
 <p align="center">
-  <img src=".github/assets/stack.svg" height="28" alt="Python · FastAPI · PostgreSQL · Docker" />
+  <a href=".github/assets/light/stack.svg#gh-light-mode-only"><img src=".github/assets/light/stack.svg" height="28" alt="Python · FastAPI · PostgreSQL · Docker" /></a><a href=".github/assets/stack.svg#gh-dark-mode-only"><img src=".github/assets/stack.svg" height="28" alt="Python · FastAPI · PostgreSQL · Docker" /></a>
 </p>
 
 MVP сервиса мониторинга Wildberries, Ozon и Яндекс Маркета: Telegram-бот, история цен, веб-дашборд и уведомления по правилам.
